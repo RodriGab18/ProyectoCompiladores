@@ -173,7 +173,7 @@ namespace BioSphereIDE
                 BackColor = Color.FromArgb(30, 30, 30), 
                 ForeColor = Color.White, 
                 AcceptsTab = true,
-                Text = "// Simulacion Avanzada: Proyecto Terraformacion Alpha\nsimulacion {\n    planeta {\n        radio = 3389 km ;\n        masa = 0.107 M_T ;\n        // Calculo dinamico de la gravedad\n        gravedad = ( G * masa ) / ( radio ^ 2 ) ;\n        temperatura = -60 ° C ;\n    }\n\n    atmosfera {\n        presion = 0.006 atm ;\n        co2 = 95 % ;\n        oxigeno = 0.1 % ;\n        radiacion = 2.5 Sv ;\n    }\n\n    agua {\n        estado_liquido = falso ;\n        volumen = 0 l ;\n    }\n\n    // Ciclo de evolucion temporal (Simulando 100 años)\n    iterar ( 100 ) {\n        temperatura = temperatura + 0.5 ;\n        presion = presion + 0.01 ;\n\n        si ( temperatura >= 0 y presion > 0.5 ) {\n            agua.estado_liquido = verdadero ;\n            mostrar ( \"El hielo se ha derretido con exito\" ) ;\n        } sino {\n            continuar ;\n        }\n    }\n\n    // Evaluacion final de habitabilidad\n    si ( temperatura > 15 y oxigeno >= 20 ) {\n        vida = verdadero ;\n        reporte ( \"Planeta listo para colonizacion\" ) ;\n    }\n\n    // ==========================================\n    // TRAMPAS PARA EL ANALIZADOR LÉXICO\n    // ==========================================\n    \n    // 1. Error: Identificador que empieza con numero\n    5000colonos = verdadero ;\n    \n    // 2. Error: Simbolos ajenos al alfabeto del lenguaje\n    @ $ #\n}"
+                Text = ""
             };
 
          
