@@ -333,15 +333,15 @@ namespace BioSphereIDE
         private string lastTooltipMsg = "";   // evita redibujar si el mensaje no cambió
         private Point lastTooltipPos = Point.Empty;
         
-        // Colores del tema
+        // COLORES OFICIALES DE VISUAL STUDIO (Dark Theme)
         private readonly Color FondoColor = Color.FromArgb(30, 30, 30);
-        private readonly Color TextoColor = Color.FromArgb(173, 216, 230); // Azul claro
-        private readonly Color PalabraReservadaColor = Color.FromArgb(25, 25, 112); // Azul oscuro midnight blue
-        private readonly Color NumeroColor = Color.FromArgb(255, 215, 0); // Dorado
-        private readonly Color CadenaColor = Color.FromArgb(152, 251, 152); // Verde claro
-        private readonly Color OperadorColor = Color.FromArgb(255, 182, 193); // Rosa claro
+        private readonly Color TextoColor = Color.FromArgb(212, 212, 212); // Gris claro estándar VS
+        private readonly Color PalabraReservadaColor = Color.FromArgb(86, 156, 214); // Azul VS
+        private readonly Color NumeroColor = Color.FromArgb(181, 206, 168); // Verde pálido VS
+        private readonly Color CadenaColor = Color.FromArgb(214, 157, 133); // Naranja/Marrón VS
+        private readonly Color OperadorColor = Color.FromArgb(180, 180, 180); // Gris claro
         private readonly Color ErrorColor = Color.Red;
-        private readonly Color ComentarioColor = Color.FromArgb(128, 128, 128); // Gris
+        private readonly Color ComentarioColor = Color.FromArgb(87, 166, 74); // Verde bosque VS
 
         public CodeEditorWithHighlighting()
         {
@@ -379,7 +379,7 @@ namespace BioSphereIDE
         }
 
         // ── Hover: detectar si el cursor está sobre un error ───────────────
-        private void CodeEditorWithHighlighting_MouseMove(object? sender, MouseEventArgs e)
+        private void CodeEditorWithHighlighting_MouseMove(object sender, MouseEventArgs e)
         {
             if (currentErrors == null || currentErrors.Count == 0)
             {
@@ -401,7 +401,7 @@ namespace BioSphereIDE
             }
 
             // Buscar si ese índice cae dentro de algún error registrado
-            ErrorInfo? found = null;
+            ErrorInfo found = null;
             foreach (var error in currentErrors)
             {
                 int errStart = GetPositionFromLineColumn(error.Line, error.Column);
@@ -440,30 +440,30 @@ namespace BioSphereIDE
             errorToolTip.Show(msg, this, tipPos, 8000);
         }
 
-        private void CodeEditorWithHighlighting_MouseLeave(object? sender, EventArgs e)
+        private void CodeEditorWithHighlighting_MouseLeave(object sender, EventArgs e)
         {
             errorToolTip.Hide(this);
             lastTooltipMsg = "";
         }
 
-        private void CodeEditorWithHighlighting_Scroll(object? sender, EventArgs e)
+        private void CodeEditorWithHighlighting_Scroll(object sender, EventArgs e)
         {
             this.Invalidate();
         }
 
-        private void CodeEditorWithHighlighting_SelectionChanged(object? sender, EventArgs e)
+        private void CodeEditorWithHighlighting_SelectionChanged(object sender, EventArgs e)
         {
             this.Invalidate();
         }
 
-        private void HighlightTimer_Tick(object? sender, EventArgs e)
+        private void HighlightTimer_Tick(object sender, EventArgs e)
         {
             highlightTimer.Stop();
             AplicarResaltado();
             highlightTimer.Start();
         }
 
-        private void CodeEditorWithHighlighting_TextChanged(object? sender, EventArgs e)
+        private void CodeEditorWithHighlighting_TextChanged(object sender, EventArgs e)
         {
             highlightTimer.Stop();
             highlightTimer.Start();
@@ -599,12 +599,136 @@ namespace BioSphereIDE
         public List<ErrorInfo> GetErrores() => currentErrors ?? new List<ErrorInfo>();
     }
 
+    // ==================================================================================
+    // VENTANA DE DOCUMENTACIÓN AÑADIDA (Tema Claro - Blanco y Negro)
+    // ==================================================================================
+    public class FrmDocumentacion : Form
+    {
+        public FrmDocumentacion()
+        {
+            this.Text = "Manual de Usuario - ASTRA DSL & IDE";
+            this.Size = new Size(900, 700);
+            this.StartPosition = FormStartPosition.CenterParent;
+            this.BackColor = Color.White; // Fondo Blanco
+            this.ForeColor = Color.Black; // Texto Negro
+            this.Font = new Font("Segoe UI", 11);
+            this.ShowIcon = false;
+            this.MinimizeBox = false;
+
+            TabControl tabs = new TabControl { Dock = DockStyle.Fill, Appearance = TabAppearance.Normal };
+            tabs.Padding = new Point(15, 5);
+
+            tabs.DrawMode = TabDrawMode.OwnerDrawFixed;
+            tabs.DrawItem += (s, e) => {
+                Graphics g = e.Graphics;
+                TabPage page = tabs.TabPages[e.Index];
+                Rectangle tabBounds = tabs.GetTabRect(e.Index);
+
+                // Tema Claro para las pestañas
+                Color backColor = e.State == DrawItemState.Selected ? Color.White : Color.FromArgb(240, 240, 240);
+                Color foreColor = Color.Black;
+
+                g.FillRectangle(new SolidBrush(backColor), tabBounds);
+                TextRenderer.DrawText(g, page.Text, tabs.Font, tabBounds, foreColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+
+            tabs.TabPages.Add(CrearPaginaRtf("1. Introducción", GetInfoGeneral()));
+            tabs.TabPages.Add(CrearPaginaRtf("2. Sintaxis Básica", GetSintaxisBasica()));
+            tabs.TabPages.Add(CrearPaginaRtf("3. Palabras Reservadas", GetPalabrasReservadas()));
+            tabs.TabPages.Add(CrearPaginaRtf("4. Ejemplos", GetEjemplos()));
+
+            this.Controls.Add(tabs);
+
+            Button btnCerrar = new Button { Text = "Entendido", Dock = DockStyle.Bottom, Height = 50, 
+                BackColor = Color.FromArgb(230, 230, 230), ForeColor = Color.Black, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Font = new Font("Segoe UI", 12, FontStyle.Bold) };
+            btnCerrar.FlatAppearance.BorderSize = 0;
+            btnCerrar.Click += (s, e) => this.Close();
+            this.Controls.Add(btnCerrar);
+        }
+
+        private TabPage CrearPaginaRtf(string titulo, string rtfContent)
+        {
+            TabPage page = new TabPage(titulo) { BackColor = Color.White };
+            RichTextBox rtb = new RichTextBox { Dock = DockStyle.Fill, Rtf = rtfContent, ReadOnly = true, BorderStyle = BorderStyle.None, BackColor = Color.White, ForeColor = Color.Black, Padding = new Padding(20) };
+            page.Controls.Add(rtb);
+            return page;
+        }
+
+        private string GetInfoGeneral() => 
+            @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
+            \viewkind4\uc1\pard\f0\fs36\b Manual de ASTRA DSL\b0\fs24\par
+            \par
+            Bienvenido al entorno de desarrollo de \b ASTRA\b0  (Astrobiology Simulation and Terrain Analysis).\par
+            \par
+            Este programa es un IDE (Entorno de Desarrollo Integrado) disenado para escribir, analizar y validar codigo escrito en el lenguaje \b ASTRA DSL\b0.\par
+            \par
+            \fs28\b El IDE consta de tres partes principales:\b0\fs24\par
+            \b 1. Editor de Codigo (Izquierda):\b0  Donde escribes tu programa. Cuenta con resaltado de colores en tiempo real. Si cometes un error logico (como no cerrar una llave) o escribes un caracter invalido, veras un subrayado rojo discontinuo. Pasa el raton sobre el subrayado para ver la explicacion del error.\par
+            \par
+            \b 2. Tabla de Tokens (Arriba Derecha):\b0  Muestra como el compilador lee tu codigo, dividiendolo en piezas elementales clasificadas por tipo.\par
+            \par
+            \b 3. Consola de Salida (Abajo Derecha):\b0  Al presionar el boton de Analizar, aqui veras el resultado del analisis.\par
+            }";
+
+        private string GetSintaxisBasica() =>
+            @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
+            \viewkind4\uc1\pard\f0\fs32\b Conceptos Clave de ASTRA DSL\b0\fs24\par
+            \par
+            \b Comentarios:\b0\par
+            Usa {\f1 //} para escribir comentarios de una sola linea.\par
+            \par
+            \b Bloques de Codigo:\b0\par
+            ASTRA es un lenguaje estructurado por bloques delimitados por llaves \{ \}.\par
+            \par
+            \b Tipos de Datos:\b0\par
+            \tab\bullet\b Identificadores:\b0  Nombres de variables. Deben empezar con una letra.\par
+            \tab\bullet\b Numeros:\b0  Enteros o decimales.\par
+            \tab\bullet\b Cadenas (Texto):\b0  Texto entre comillas dobles.\par
+            }";
+
+        private string GetPalabrasReservadas() =>
+            @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
+            \viewkind4\uc1\pard\f0\fs32\b Diccionario de Palabras Reservadas\b0\fs24\par
+            \par
+            \fs26\b Estructura y Control de Flujo:\b0\fs24\par
+            \tab\bullet\b inicio / fin\par
+            \tab\bullet\b si / sino / mientras / para / iterar / repetir\par
+            \tab\bullet\b romper / continuar / interrumpir\par
+            \tab\bullet\b y / o / no\par
+            \par
+            \fs26\b Propiedades y Logica:\b0\fs24\par
+            \tab\bullet\b gravedad / radiacion / temperatura / velocidad / densidad / composicion\par
+            \tab\bullet\b verdadero / falso / nulo / entero / booleano / decimal / texto\par
+            \par
+            \fs26\b Acciones:\b0\fs24\par
+            \tab\bullet\b resultado / mostrar / guardar / reporte / analizar / configuracion\par
+            }";
+
+        private string GetEjemplos() =>
+            @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Consolas;}{\f1\fnil\fcharset0 Segoe UI;}}
+            \viewkind4\uc1\pard\f0\fs22 // Ejemplo de configuracion\line
+            simulacion \{\line
+            \tab planeta \{\line
+            \tab\tab temperatura = -60;\line
+            \tab\tab gravedad = 3.7;\line
+            \tab\}\line
+            \}\line
+            \line
+            \ pard\f1\fs24\par
+            \f1\b Ejemplo de logica condicional:\b0\par
+            \pard\f0\fs22 si (temperatura > -50 y presion < 1) \{\line
+            \tab mostrar(""Posible terraformacion"");\line
+            \}\line
+            }";
+    }
+
     public class BioSphereEditor : Form
     {
         private CodeEditorWithHighlighting txtCodigo;
         private DataGridView gridTokens;
         private RichTextBox txtConsola;
-        private Button btnCompilar;
+        private Button btnCompilar; 
+        private Button btnDocumentacion; 
         private CheckBox chkModoPrueba;
         private Panel statusPanel;
         private Label lblErrorCount;
@@ -612,7 +736,7 @@ namespace BioSphereIDE
 
         public BioSphereEditor()
         {
-            this.Text = "BioSphere DSL - IDE Profesional";
+            this.Text = "ASTRA - IDE";
             this.Size = new Size(1400, 900);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = Color.FromArgb(45, 45, 48);
@@ -627,7 +751,7 @@ namespace BioSphereIDE
 
             Label lblTitle = new Label
             {
-                Text = "🌍 BioSphere DSL",
+                Text = "🌍 ASTRA DSL",
                 Font = new Font("Segoe UI", 18, FontStyle.Bold),
                 ForeColor = Color.White,
                 Location = new Point(15, 15),
@@ -635,20 +759,43 @@ namespace BioSphereIDE
             };
             topPanel.Controls.Add(lblTitle);
 
+            // BOTÓN PLAY (Nativo, estilizado plano)
             btnCompilar = new Button
             {
-                Text = "🔍 Analizar",
-                Font = new Font("Segoe UI", 12, FontStyle.Bold),
-                Location = new Point(250, 12),
-                Size = new Size(130, 35),
-                BackColor = Color.SeaGreen,
+                Text = "▷", 
+                Font = new Font("Segoe UI Symbol", 16, FontStyle.Regular),
+                Location = new Point(250, 10),
+                Size = new Size(40, 40),
+                BackColor = Color.FromArgb(60, 60, 70), 
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand
             };
             btnCompilar.FlatAppearance.BorderSize = 0;
+            btnCompilar.FlatAppearance.MouseOverBackColor = Color.FromArgb(80, 80, 90); 
+            btnCompilar.FlatAppearance.MouseDownBackColor = Color.FromArgb(100, 100, 110);
+            new ToolTip().SetToolTip(btnCompilar, "Analizar Código");
             btnCompilar.Click += BtnCompilar_Click;
             topPanel.Controls.Add(btnCompilar);
+
+            // BOTÓN LIBRO (Nativo, estilizado plano)
+            btnDocumentacion = new Button
+            {
+                Text = "📖", 
+                Font = new Font("Segoe UI Emoji", 14, FontStyle.Regular),
+                Location = new Point(295, 10),
+                Size = new Size(40, 40),
+                BackColor = Color.FromArgb(60, 60, 70),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            btnDocumentacion.FlatAppearance.BorderSize = 0;
+            btnDocumentacion.FlatAppearance.MouseOverBackColor = Color.FromArgb(80, 80, 90);
+            btnDocumentacion.FlatAppearance.MouseDownBackColor = Color.FromArgb(100, 100, 110);
+            new ToolTip().SetToolTip(btnDocumentacion, "Abrir Documentación");
+            btnDocumentacion.Click += BtnDocumentacion_Click;
+            topPanel.Controls.Add(btnDocumentacion);
 
             chkModoPrueba = new CheckBox
             {
@@ -697,7 +844,7 @@ namespace BioSphereIDE
             txtCodigo = new CodeEditorWithHighlighting();
             
             leftPanel.Controls.Add(txtCodigo);
-            leftPanel.Controls.Add(topPanel); // topPanel está Dock.Top, txtCodigo está Dock.Fill
+            leftPanel.Controls.Add(topPanel);
 
             // ===== PANEL DERECHO (TOKENS + CONSOLA) =====
             SplitContainer rightSplit = new SplitContainer
@@ -737,22 +884,26 @@ namespace BioSphereIDE
             rightSplit.Panel1.Controls.Add(gridTokens);
             rightSplit.Panel2.Controls.Add(txtConsola);
 
-            // Asignar paneles al split principal
             mainSplit.Panel1.Controls.Add(leftPanel);
             mainSplit.Panel2.Controls.Add(rightSplit);
 
-            // Agregar todo al formulario en el orden correcto
             this.Controls.Add(mainSplit);
             this.Controls.Add(statusPanel);
 
-            // Cargar código inicial
             CargarCodigoCorrecto();
 
-            // Timer para actualizar contador de errores
             errorTimer = new System.Windows.Forms.Timer();
             errorTimer.Interval = 600;
             errorTimer.Tick += (s, e) => ActualizarContadorErrores();
             errorTimer.Start();
+        }
+
+        private void BtnDocumentacion_Click(object sender, EventArgs e)
+        {
+            using (FrmDocumentacion doc = new FrmDocumentacion())
+            {
+                doc.ShowDialog(this);
+            }
         }
 
         private void ActualizarContadorErrores()
@@ -822,7 +973,7 @@ simulacion {{  // Error: llaves dobles
 // Error: falta cerrar simulacion";
         }
 
-        private void ChkModoPrueba_CheckedChanged(object? sender, EventArgs e)
+        private void ChkModoPrueba_CheckedChanged(object sender, EventArgs e)
         {
             if (chkModoPrueba.Checked)
                 CargarCodigoConErrores();
@@ -830,7 +981,7 @@ simulacion {{  // Error: llaves dobles
                 CargarCodigoCorrecto();
         }
 
-        private void BtnCompilar_Click(object? sender, EventArgs e)
+        private void BtnCompilar_Click(object sender, EventArgs e)
         {
             gridTokens.Rows.Clear();
             txtConsola.Clear();
@@ -856,8 +1007,8 @@ simulacion {{  // Error: llaves dobles
                 txtConsola.SelectionColor = Color.Red;
                 txtConsola.AppendText("❌ ANÁLISIS COMPLETADO CON ERRORES\n\n");
 
-                var lexicos = errores.Where(e => e.Type == ErrorType.Lexico).ToList();
-                var estructurales = errores.Where(e => e.Type == ErrorType.Estructural).ToList();
+                var lexicos = errores.Where(err => err.Type == ErrorType.Lexico).ToList();
+                var estructurales = errores.Where(err => err.Type == ErrorType.Estructural).ToList();
 
                 if (lexicos.Count > 0)
                 {
