@@ -83,14 +83,12 @@ namespace BioSphereIDE
                 // Cadena correctamente cerrada
                 new TokenDefinition(TokenType.CADENA, "\"[^\"\r\n]*\""),
                 // Cadena sin cerrar → ERROR LÉXICO
-                new TokenDefinition(TokenType.ERROR_LEXICO, "\"[^\"\r\n]*$"),
+                new TokenDefinition(TokenType.ERROR_LEXICO, "\"[^\"\r\n]*(?=\r|\n|$)"),
 
                 // Símbolos del lenguaje
                 new TokenDefinition(TokenType.SIMBOLO, @"\(|\)|\{|\}|\[|\]|;|,|\.|°"),
 
-                // Identificadores válidos
-                new TokenDefinition(TokenType.IDENTIFICADOR, @"[a-zA-Z][a-zA-Z0-9_]*"),
-                 // Física
+                // Física
                 new TokenDefinition(TokenType.PALABRA_RESERVADA,
                     @"\b(gravedad|radiacion|temperatura|velocidad|densidad|composicion)\b"),
                 // Control de flujo
@@ -102,6 +100,9 @@ namespace BioSphereIDE
                 // Acciones
                 new TokenDefinition(TokenType.PALABRA_RESERVADA,
                     @"\b(resultado|mostrar|guardar|reporte|analizar|configuracion)\b"),
+
+                // Identificadores válidos
+                new TokenDefinition(TokenType.IDENTIFICADOR, @"[a-zA-Z][a-zA-Z0-9_]*"),
 
             };
         }
