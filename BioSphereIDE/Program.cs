@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using System.Linq;
 
 namespace BioSphereIDE
 {
@@ -14,6 +15,8 @@ namespace BioSphereIDE
         public string Lexeme { get; }
         public int Line { get; }
         public int Column { get; }
+        public int Length => Lexeme.Length;
+        
         public Token(TokenType type, string lexeme, int line, int column) 
         { 
             Type = type; Lexeme = lexeme; Line = line; Column = column; 
@@ -31,68 +34,87 @@ namespace BioSphereIDE
         }
     }
 
+    public class ErrorInfo
+    {
+        public int Line { get; set; }
+        public int Column { get; set; }
+        public int Length { get; set; }
+        public string Message { get; set; }
+        public ErrorType Type { get; set; }
+    }
+
+    public enum ErrorType
+    {
+        Lexico,
+        Estructural
+    }
+
     public class Lexer
     {
         private readonly string _sourceCode;
         private int _position = 0, _line = 1, _column = 1;
         private readonly List<TokenDefinition> _tokenDefinitions;
-        public List<string> Errores { get; } = new List<string>();
-        public List<string> ErroresEstructurales { get; } = new List<string>();
+        public List<ErrorInfo> Errores { get; } = new List<ErrorInfo>();
+        public List<Token> Tokens { get; private set; } = new List<Token>();
 
         public Lexer(string sourceCode)
         {
             _sourceCode = sourceCode;
             _tokenDefinitions = new List<TokenDefinition>
             {
-                // PRIMERO: Palabras reservadas
+                // Palabras reservadas
                 new TokenDefinition(TokenType.PALABRA_RESERVADA, @"\b(simulacion|planeta|atmosfera|agua|vida|inicio|fin|entero|imprimir|si|sino|mientras|iterar|continuar|romper|reporte|mostrar|verdadero|falso|gravedad|radiacion|temperatura|presion|co2|oxigeno|masa|radio|volumen|estado_liquido|y)\b"),
-                
-                // SEGUNDO: Detectar números pegados a letras (ERROR)
-                new TokenDefinition(TokenType.ERROR_LEXICO, @"\d+[a-zA-Z_][a-zA-Z0-9_]*"),
-                
-                // TERCERO: Símbolos no permitidos
-                new TokenDefinition(TokenType.ERROR_LEXICO, @"[@#$%^&*!?<>|\\~`]"),
-                
-                // CUARTO: Números
-                new TokenDefinition(TokenType.NUMERO, @"-?\d+(\.\d+)?"),
-                
-                // QUINTO: Cadenas de texto
-                new TokenDefinition(TokenType.CADENA, "\"[^\"]*\""),
-                
-                // SEXTO: Operadores
+
+                // OPERADORES - PRIMERO para que no sean atrapados como errores
                 new TokenDefinition(TokenType.OPERADOR, @"<=|>=|==|!=|<|>|\+|-|\*|/|=|\^"),
-                
-                // SÉPTIMO: Símbolos del lenguaje (cada uno individualmente)
+
+                // Detectar números pegados a letras (ERROR)
+                new TokenDefinition(TokenType.ERROR_LEXICO, @"\d+[a-zA-Z_][a-zA-Z0-9_]*"),
+
+                // Símbolos no permitidos (excluyendo < y > que ya son operadores)
+                new TokenDefinition(TokenType.ERROR_LEXICO, @"[@#$%^&*!?|\\~`]"),
+
+                // Números
+                new TokenDefinition(TokenType.NUMERO, @"-?\d+(\.\d+)?"),
+
+                // Cadenas de texto
+                new TokenDefinition(TokenType.CADENA, "\"[^\"]*\""),
+
+                // Símbolos del lenguaje
                 new TokenDefinition(TokenType.SIMBOLO, @"\(|\)|\{|\}|\[|\]|;|,|\.|°"),
-                
-                // OCTAVO: Identificadores válidos
+
+                // Identificadores válidos
                 new TokenDefinition(TokenType.IDENTIFICADOR, @"[a-zA-Z][a-zA-Z0-9_]*"),
-                
-                // NOVENO: Unidades de medida como ERROR
-                new TokenDefinition(TokenType.ERROR_LEXICO, @"[a-zA-Z]+_[a-zA-Z]+|[a-zA-Z]{1,3}\b(?![a-zA-Z0-9_])")
             };
         }
 
-        // Verificador básico de estructura (llaves y paréntesis)
-        private void VerificarEstructuraBasica(List<Token> tokens)
+        private void VerificarEstructuraBasica()
         {
-            Stack<Token> pilaLlaves = new Stack<Token>();
-            Stack<Token> pilaParentesis = new Stack<Token>();
-            Stack<Token> pilaCorchetes = new Stack<Token>();
+            Stack<(Token token, int index)> pilaLlaves = new Stack<(Token, int)>();
+            Stack<(Token token, int index)> pilaParentesis = new Stack<(Token, int)>();
+            Stack<(Token token, int index)> pilaCorchetes = new Stack<(Token, int)>();
             
-            foreach (var token in tokens)
+            for (int i = 0; i < Tokens.Count; i++)
             {
+                var token = Tokens[i];
                 if (token.Type != TokenType.SIMBOLO) continue;
                 
                 switch (token.Lexeme)
                 {
                     case "{":
-                        pilaLlaves.Push(token);
+                        pilaLlaves.Push((token, i));
                         break;
                     case "}":
                         if (pilaLlaves.Count == 0)
                         {
-                            ErroresEstructurales.Add($"[Error Estructural] Llave de cierre '}}' sin abrir en Lín: {token.Line}, Col: {token.Column}");
+                            Errores.Add(new ErrorInfo
+                            {
+                                Line = token.Line,
+                                Column = token.Column,
+                                Length = token.Length,
+                                Message = $"Llave de cierre '}}' sin abrir",
+                                Type = ErrorType.Estructural
+                            });
                         }
                         else
                         {
@@ -101,12 +123,19 @@ namespace BioSphereIDE
                         break;
                         
                     case "(":
-                        pilaParentesis.Push(token);
+                        pilaParentesis.Push((token, i));
                         break;
                     case ")":
                         if (pilaParentesis.Count == 0)
                         {
-                            ErroresEstructurales.Add($"[Error Estructural] Paréntesis de cierre ')' sin abrir en Lín: {token.Line}, Col: {token.Column}");
+                            Errores.Add(new ErrorInfo
+                            {
+                                Line = token.Line,
+                                Column = token.Column,
+                                Length = token.Length,
+                                Message = $"Paréntesis de cierre ')' sin abrir",
+                                Type = ErrorType.Estructural
+                            });
                         }
                         else
                         {
@@ -115,12 +144,19 @@ namespace BioSphereIDE
                         break;
                         
                     case "[":
-                        pilaCorchetes.Push(token);
+                        pilaCorchetes.Push((token, i));
                         break;
                     case "]":
                         if (pilaCorchetes.Count == 0)
                         {
-                            ErroresEstructurales.Add($"[Error Estructural] Corchete de cierre ']' sin abrir en Lín: {token.Line}, Col: {token.Column}");
+                            Errores.Add(new ErrorInfo
+                            {
+                                Line = token.Line,
+                                Column = token.Column,
+                                Length = token.Length,
+                                Message = $"Corchete de cierre ']' sin abrir",
+                                Type = ErrorType.Estructural
+                            });
                         }
                         else
                         {
@@ -130,31 +166,51 @@ namespace BioSphereIDE
                 }
             }
             
-            // Verificar si quedaron símbolos sin cerrar
-            while (pilaLlaves.Count > 0)
+            // Verificar símbolos sin cerrar
+            foreach (var item in pilaLlaves)
             {
-                var token = pilaLlaves.Pop();
-                ErroresEstructurales.Add($"[Error Estructural] Llave '{{' abierta en Lín: {token.Line}, Col: {token.Column} no tiene cierre");
+                Errores.Add(new ErrorInfo
+                {
+                    Line = item.token.Line,
+                    Column = item.token.Column,
+                    Length = item.token.Length,
+                    Message = $"Llave '{{' abierta no tiene cierre",
+                    Type = ErrorType.Estructural
+                });
             }
             
-            while (pilaParentesis.Count > 0)
+            foreach (var item in pilaParentesis)
             {
-                var token = pilaParentesis.Pop();
-                ErroresEstructurales.Add($"[Error Estructural] Paréntesis '(' abierto en Lín: {token.Line}, Col: {token.Column} no tiene cierre");
+                Errores.Add(new ErrorInfo
+                {
+                    Line = item.token.Line,
+                    Column = item.token.Column,
+                    Length = item.token.Length,
+                    Message = $"Paréntesis '(' abierto no tiene cierre",
+                    Type = ErrorType.Estructural
+                });
             }
             
-            while (pilaCorchetes.Count > 0)
+            foreach (var item in pilaCorchetes)
             {
-                var token = pilaCorchetes.Pop();
-                ErroresEstructurales.Add($"[Error Estructural] Corchete '[' abierto en Lín: {token.Line}, Col: {token.Column} no tiene cierre");
+                Errores.Add(new ErrorInfo
+                {
+                    Line = item.token.Line,
+                    Column = item.token.Column,
+                    Length = item.token.Length,
+                    Message = $"Corchete '[' abierto no tiene cierre",
+                    Type = ErrorType.Estructural
+                });
             }
         }
 
         public List<Token> Tokenize()
         {
-            var tokens = new List<Token>();
+            Tokens.Clear();
             Errores.Clear();
-            ErroresEstructurales.Clear();
+            _position = 0;
+            _line = 1;
+            _column = 1;
             
             while (_position < _sourceCode.Length)
             {
@@ -168,10 +224,18 @@ namespace BioSphereIDE
                 // Ignorar comentarios
                 if (_position + 1 < _sourceCode.Length && _sourceCode[_position] == '/' && _sourceCode[_position + 1] == '/')
                 {
+                    int startCol = _column;
+                    int startLine = _line;
+                    string comment = "";
+                    
                     while (_position < _sourceCode.Length && _sourceCode[_position] != '\n') 
                     {
+                        comment += _sourceCode[_position];
                         AdvancePosition(_sourceCode[_position]);
                     }
+                    
+                    // Agregar comentario como token especial (lo ignoramos pero lo guardamos para mantener índices)
+                    Tokens.Add(new Token(TokenType.SIMBOLO, comment, startLine, startCol));
                     continue;
                 }
                 
@@ -183,12 +247,17 @@ namespace BioSphereIDE
                     {
                         if (def.Type == TokenType.ERROR_LEXICO)
                         {
-                            Errores.Add($"[Error Léxico] '{match.Value}' no permitido en Lín: {_line}, Col: {_column}");
+                            Errores.Add(new ErrorInfo
+                            {
+                                Line = _line,
+                                Column = _column,
+                                Length = match.Value.Length,
+                                Message = $"'{match.Value}' no permitido",
+                                Type = ErrorType.Lexico
+                            });
                         }
-                        else
-                        {
-                            tokens.Add(new Token(def.Type, match.Value, _line, _column));
-                        }
+                        
+                        Tokens.Add(new Token(def.Type, match.Value, _line, _column));
                         
                         foreach (char c in match.Value) AdvancePosition(c);
                         matchFound = true; 
@@ -198,17 +267,24 @@ namespace BioSphereIDE
 
                 if (!matchFound)
                 {
-                    Errores.Add($"[Error Léxico] Símbolo no reconocido '{_sourceCode[_position]}' en Lín: {_line}, Col: {_column}");
+                    Errores.Add(new ErrorInfo
+                    {
+                        Line = _line,
+                        Column = _column,
+                        Length = 1,
+                        Message = $"Símbolo '{_sourceCode[_position]}' no reconocido",
+                        Type = ErrorType.Lexico
+                    });
+                    
+                    Tokens.Add(new Token(TokenType.ERROR_LEXICO, _sourceCode[_position].ToString(), _line, _column));
                     AdvancePosition(_sourceCode[_position]);
                 }
             }
             
-            tokens.Add(new Token(TokenType.EOF, "EOF", _line, _column));
+            Tokens.Add(new Token(TokenType.EOF, "EOF", _line, _column));
+            VerificarEstructuraBasica();
             
-            // Verificar estructura después de tokenizar
-            VerificarEstructuraBasica(tokens);
-            
-            return tokens;
+            return Tokens;
         }
 
         private void AdvancePosition(char c)
@@ -220,174 +296,424 @@ namespace BioSphereIDE
         }
     }
 
+    public class CodeEditorWithHighlighting : RichTextBox
+    {
+        private System.Windows.Forms.Timer highlightTimer;
+        private Lexer currentLexer;
+        private List<ErrorInfo> currentErrors = new List<ErrorInfo>();
+        
+        // Colores del tema
+        private readonly Color FondoColor = Color.FromArgb(30, 30, 30);
+        private readonly Color TextoColor = Color.FromArgb(173, 216, 230); // Azul claro
+        private readonly Color PalabraReservadaColor = Color.FromArgb(25, 25, 112); // Azul oscuro midnight blue
+        private readonly Color NumeroColor = Color.FromArgb(255, 215, 0); // Dorado
+        private readonly Color CadenaColor = Color.FromArgb(152, 251, 152); // Verde claro
+        private readonly Color OperadorColor = Color.FromArgb(255, 182, 193); // Rosa claro
+        private readonly Color ErrorColor = Color.Red;
+        private readonly Color ComentarioColor = Color.FromArgb(128, 128, 128); // Gris
+
+        public CodeEditorWithHighlighting()
+        {
+            this.BackColor = FondoColor;
+            this.ForeColor = TextoColor;
+            this.Font = new Font("Consolas", 14);
+            this.AcceptsTab = true;
+            this.WordWrap = false;
+            this.Dock = DockStyle.Fill;
+            this.BorderStyle = BorderStyle.None;
+            
+            highlightTimer = new System.Windows.Forms.Timer();
+            highlightTimer.Interval = 500;
+            highlightTimer.Tick += HighlightTimer_Tick;
+            highlightTimer.Start();
+            
+            this.TextChanged += CodeEditorWithHighlighting_TextChanged;
+            this.SelectionChanged += CodeEditorWithHighlighting_SelectionChanged;
+            this.VScroll += CodeEditorWithHighlighting_Scroll;
+        }
+
+        private void CodeEditorWithHighlighting_Scroll(object? sender, EventArgs e)
+        {
+            this.Invalidate();
+        }
+
+        private void CodeEditorWithHighlighting_SelectionChanged(object? sender, EventArgs e)
+        {
+            this.Invalidate();
+        }
+
+        private void HighlightTimer_Tick(object? sender, EventArgs e)
+        {
+            highlightTimer.Stop();
+            AplicarResaltado();
+            highlightTimer.Start();
+        }
+
+        private void CodeEditorWithHighlighting_TextChanged(object? sender, EventArgs e)
+        {
+            highlightTimer.Stop();
+            highlightTimer.Start();
+        }
+
+        private void AplicarResaltado()
+        {
+            if (this.Text.Length == 0) return;
+            
+            try
+            {
+                int selectionStart = this.SelectionStart;
+                int selectionLength = this.SelectionLength;
+                
+                currentLexer = new Lexer(this.Text);
+                var tokens = currentLexer.Tokenize();
+                currentErrors = currentLexer.Errores;
+                
+                this.SuspendLayout();
+                
+                this.SelectAll();
+                this.SelectionColor = TextoColor;
+                
+                foreach (var token in tokens)
+                {
+                    if (token.Type == TokenType.EOF) continue;
+                    
+                    int start = GetPositionFromLineColumn(token.Line, token.Column);
+                    if (start < 0 || start >= this.Text.Length) continue;
+                    
+                    this.Select(start, token.Lexeme.Length);
+                    
+                    switch (token.Type)
+                    {
+                        case TokenType.PALABRA_RESERVADA:
+                            this.SelectionColor = PalabraReservadaColor;
+                            break;
+                        case TokenType.NUMERO:
+                            this.SelectionColor = NumeroColor;
+                            break;
+                        case TokenType.CADENA:
+                            this.SelectionColor = CadenaColor;
+                            break;
+                        case TokenType.OPERADOR:
+                            this.SelectionColor = OperadorColor;
+                            break;
+                        case TokenType.ERROR_LEXICO:
+                            this.SelectionColor = ErrorColor;
+                            break;
+                    }
+                }
+                
+                var commentMatches = Regex.Matches(this.Text, @"//.*$", RegexOptions.Multiline);
+                foreach (Match match in commentMatches)
+                {
+                    this.Select(match.Index, match.Length);
+                    this.SelectionColor = ComentarioColor;
+                }
+                
+                this.Select(selectionStart, selectionLength);
+                this.SelectionColor = TextoColor;
+                
+                this.ResumeLayout();
+                this.Invalidate();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error en resaltado: {ex.Message}");
+            }
+        }
+
+        private int GetPositionFromLineColumn(int line, int column)
+        {
+            string[] lines = this.Text.Split('\n');
+            int pos = 0;
+            
+            for (int i = 1; i < line; i++)
+            {
+                if (i - 1 < lines.Length)
+                    pos += lines[i - 1].Length + 1;
+                else
+                    return -1;
+            }
+            
+            return pos + column - 1;
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            
+            if (currentErrors != null && currentErrors.Count > 0)
+            {
+                using (Pen errorPen = new Pen(Color.Red, 2))
+                {
+                    errorPen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
+                    
+                    foreach (var error in currentErrors)
+                    {
+                        try
+                        {
+                            int start = GetPositionFromLineColumn(error.Line, error.Column);
+                            if (start < 0 || start >= this.Text.Length) continue;
+                            
+                            Point startPos = this.GetPositionFromCharIndex(start);
+                            int endIndex = Math.Min(start + error.Length, this.Text.Length - 1);
+                            if (endIndex <= start) continue;
+                            
+                            Point endPos = this.GetPositionFromCharIndex(endIndex);
+                            
+                            if (startPos.Y == endPos.Y)
+                            {
+                                int width = endPos.X - startPos.X;
+                                if (width < 5) width = 5;
+                                
+                                e.Graphics.DrawLine(errorPen, 
+                                    startPos.X, startPos.Y + this.Font.Height - 2,
+                                    startPos.X + width, startPos.Y + this.Font.Height - 2);
+                            }
+                            else
+                            {
+                                e.Graphics.DrawLine(errorPen,
+                                    startPos.X, startPos.Y + this.Font.Height - 2,
+                                    this.Width - 20, startPos.Y + this.Font.Height - 2);
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+        }
+
+        public List<ErrorInfo> GetErrores() => currentErrors ?? new List<ErrorInfo>();
+    }
+
     public class BioSphereEditor : Form
     {
-        private RichTextBox txtCodigo;
+        private CodeEditorWithHighlighting txtCodigo;
         private DataGridView gridTokens;
         private RichTextBox txtConsola;
         private Button btnCompilar;
         private CheckBox chkModoPrueba;
+        private Panel statusPanel;
+        private Label lblErrorCount;
+        private System.Windows.Forms.Timer errorTimer;
 
         public BioSphereEditor()
         {
-            this.Text = "BioSphere DSL - Analizador Léxico";
-            this.Size = new Size(1200, 800);
+            this.Text = "BioSphere DSL - IDE Profesional";
+            this.Size = new Size(1400, 900);
             this.StartPosition = FormStartPosition.CenterScreen;
+            this.BackColor = Color.FromArgb(45, 45, 48);
 
-            SplitContainer splitContainer = new SplitContainer { Dock = DockStyle.Fill, SplitterDistance = 600 };
-            SplitContainer rightSplit = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, SplitterDistance = 500 };
-
-            Panel headerPanel = new Panel 
-            { 
-                Dock = DockStyle.Top, Height = 60, BackColor = Color.FromArgb(45, 45, 48) 
+            // ===== PANEL SUPERIOR =====
+            Panel topPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 60,
+                BackColor = Color.FromArgb(60, 60, 70)
             };
 
-            // Checkbox para modo de prueba con errores
+            Label lblTitle = new Label
+            {
+                Text = "🌍 BioSphere DSL",
+                Font = new Font("Segoe UI", 18, FontStyle.Bold),
+                ForeColor = Color.White,
+                Location = new Point(15, 15),
+                AutoSize = true
+            };
+            topPanel.Controls.Add(lblTitle);
+
+            btnCompilar = new Button
+            {
+                Text = "🔍 Analizar",
+                Font = new Font("Segoe UI", 12, FontStyle.Bold),
+                Location = new Point(250, 12),
+                Size = new Size(130, 35),
+                BackColor = Color.SeaGreen,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand
+            };
+            btnCompilar.FlatAppearance.BorderSize = 0;
+            btnCompilar.Click += BtnCompilar_Click;
+            topPanel.Controls.Add(btnCompilar);
+
             chkModoPrueba = new CheckBox
             {
-                Text = " Modo Prueba (con errores)",
+                Text = " Modo Prueba",
                 ForeColor = Color.White,
-                Font = new Font("Segoe UI", 12),
-                Location = new Point(10, 15),
+                Font = new Font("Segoe UI", 11),
+                Location = new Point(400, 18),
                 AutoSize = true,
                 Checked = false
             };
             chkModoPrueba.CheckedChanged += ChkModoPrueba_CheckedChanged;
-            headerPanel.Controls.Add(chkModoPrueba);
+            topPanel.Controls.Add(chkModoPrueba);
 
-            btnCompilar = new Button
+            // ===== PANEL INFERIOR (ESTADO) =====
+            statusPanel = new Panel
             {
-                Text = " Analizar", 
-                Font = new Font("Segoe UI", 16, FontStyle.Bold),
-                Dock = DockStyle.Right, Width = 160,
-                BackColor = Color.SeaGreen, ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand
-            };
-            btnCompilar.FlatAppearance.BorderSize = 0;
-            btnCompilar.Click += BtnCompilar_Click;
-            headerPanel.Controls.Add(btnCompilar);
-
-            // Código correcto por defecto
-            string codicodigoCorrecto = @"// Simulacion basica correcta
-simulacion {
-    planeta {
-        temperatura = 25;
-        gravedad = 9.8;
-    }
-    agua {
-        estado_liquido = verdadero;
-    }
-}";
-
-            // Código con errores para pruebas
-            string codigoConErrores = @"// Simulacion con ERRORES
-simulacion {{  // Error: llaves dobles
-    planeta {
-        temperatura = 25;
-        // Falta cerrar esta llave
-    agua {
-        estado_liquido = verdadero;
-    // Falta cerrar parentesis
-    si (temperatura > 20 {
-        mostrar (""Calor"");
-    }
-}  // Esta llave sobra?
-
-    // Identificador mal formado
-    123variable = 50;
-    
-    // Simbolos no permitidos
-    @ $ #
-";
-
-            txtCodigo = new RichTextBox
-            {
-                Dock = DockStyle.Fill, 
-                Font = new Font("Consolas", 14),
-                BackColor = Color.FromArgb(30, 30, 30), 
-                ForeColor = Color.White, 
-                AcceptsTab = true,
-                Text = codigoConErrores
+                Dock = DockStyle.Bottom,
+                Height = 30,
+                BackColor = Color.FromArgb(50, 50, 55)
             };
 
-            Panel leftPanel = new Panel { Dock = DockStyle.Fill };
-            leftPanel.Controls.Add(txtCodigo);    
-            leftPanel.Controls.Add(headerPanel);  
-            splitContainer.Panel1.Controls.Add(leftPanel);
+            lblErrorCount = new Label
+            {
+                Text = "✅ Sin errores",
+                ForeColor = Color.LightGreen,
+                Font = new Font("Segoe UI", 10),
+                Location = new Point(10, 6),
+                AutoSize = true
+            };
+            statusPanel.Controls.Add(lblErrorCount);
 
+            // ===== SPLIT CONTAINER PRINCIPAL (IZQUIERDA/DERECHA) =====
+            SplitContainer mainSplit = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                SplitterDistance = 800,
+                Orientation = Orientation.Vertical
+            };
+
+            // ===== PANEL IZQUIERDO (EDITOR) =====
+            Panel leftPanel = new Panel
+            {
+                Dock = DockStyle.Fill
+            };
+            
+            txtCodigo = new CodeEditorWithHighlighting();
+            
+            leftPanel.Controls.Add(txtCodigo);
+            leftPanel.Controls.Add(topPanel); // topPanel está Dock.Top, txtCodigo está Dock.Fill
+
+            // ===== PANEL DERECHO (TOKENS + CONSOLA) =====
+            SplitContainer rightSplit = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Horizontal,
+                SplitterDistance = 400
+            };
+
+            // Tabla de tokens
             gridTokens = new DataGridView
             {
-                Dock = DockStyle.Fill, 
-                ColumnCount = 4, 
-                ReadOnly = true, 
+                Dock = DockStyle.Fill,
+                ColumnCount = 4,
+                ReadOnly = true,
                 AllowUserToAddRows = false,
-                RowHeadersVisible = false, 
+                RowHeadersVisible = false,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor = Color.WhiteSmoke
+                BackgroundColor = Color.WhiteSmoke,
+                Font = new Font("Consolas", 10)
             };
-            gridTokens.Columns[0].Name = "Token"; 
+            gridTokens.Columns[0].Name = "Tipo";
             gridTokens.Columns[1].Name = "Lexema";
-            gridTokens.Columns[2].Name = "Línea"; 
+            gridTokens.Columns[2].Name = "Línea";
             gridTokens.Columns[3].Name = "Columna";
 
-            txtConsola = new RichTextBox 
-            { 
-                Dock = DockStyle.Fill, 
-                Font = new Font("Consolas", 11), 
-                BackColor = Color.Black, 
-                ForeColor = Color.LightGray, 
-                ReadOnly = true 
+            // Consola
+            txtConsola = new RichTextBox
+            {
+                Dock = DockStyle.Fill,
+                Font = new Font("Consolas", 10),
+                BackColor = Color.Black,
+                ForeColor = Color.LightGray,
+                ReadOnly = true
             };
 
-            rightSplit.Panel1.Controls.Add(gridTokens); 
+            rightSplit.Panel1.Controls.Add(gridTokens);
             rightSplit.Panel2.Controls.Add(txtConsola);
-            splitContainer.Panel2.Controls.Add(rightSplit);
-            this.Controls.Add(splitContainer);
+
+            // Asignar paneles al split principal
+            mainSplit.Panel1.Controls.Add(leftPanel);
+            mainSplit.Panel2.Controls.Add(rightSplit);
+
+            // Agregar todo al formulario en el orden correcto
+            this.Controls.Add(mainSplit);
+            this.Controls.Add(statusPanel);
+
+            // Cargar código inicial
+            CargarCodigoCorrecto();
+
+            // Timer para actualizar contador de errores
+            errorTimer = new System.Windows.Forms.Timer();
+            errorTimer.Interval = 600;
+            errorTimer.Tick += (s, e) => ActualizarContadorErrores();
+            errorTimer.Start();
+        }
+
+        private void ActualizarContadorErrores()
+        {
+            if (txtCodigo != null)
+            {
+                var errores = txtCodigo.GetErrores();
+                if (errores != null && errores.Count > 0)
+                {
+                    lblErrorCount.Text = $"❌ {errores.Count} error(es) detectado(s)";
+                    lblErrorCount.ForeColor = Color.Salmon;
+                }
+                else
+                {
+                    lblErrorCount.Text = "✅ Sin errores";
+                    lblErrorCount.ForeColor = Color.LightGreen;
+                }
+            }
+        }
+
+        private void CargarCodigoCorrecto()
+        {
+            txtCodigo.Text = @"// Simulación de planeta Marte - CORRECTO
+simulacion {
+    planeta {
+        temperatura = -60;
+        gravedad = 3.7;
+        radio = 3389;
+    }
+    
+    atmosfera {
+        presion = 0.006;
+        co2 = 95;
+    }
+    
+    agua {
+        estado_liquido = falso;
+    }
+    
+    si (temperatura > -50 y presion < 1) {
+        mostrar(""Posible terraformación"");
+    }
+}";
+        }
+
+        private void CargarCodigoConErrores()
+        {
+            txtCodigo.Text = @"// ========== CÓDIGO CON ERRORES ==========
+simulacion {{  // Error: llaves dobles
+    planeta {
+        temperatura = -60;
+        // Error: falta cerrar este bloque
+    atmosfera {
+        presion = 0.006;
+        co2 = 95;
+    
+    // Error: identificador con número
+    123variable = 50;
+    
+    // Error: símbolos no permitidos
+    @ $ #
+    
+    // Error: paréntesis sin cerrar
+    si (temperatura > -50 {
+        mostrar(""Error"");
+    
+// Error: falta cerrar simulacion";
         }
 
         private void ChkModoPrueba_CheckedChanged(object? sender, EventArgs e)
         {
             if (chkModoPrueba.Checked)
-            {
-                txtCodigo.Text = @"// ========== MODO PRUEBA CON ERRORES ==========
-// 1. ERROR: Llaves multiples sin cerrar
-simulacion {{{
-    planeta {
-        temperatura = 25;
-        // 2. ERROR: Parentesis sin cerrar
-        gravedad = (9.8 * 2;
-        
-    // 3. ERROR: Falta cerrar bloque planeta
-    agua {
-        estado_liquido = verdadero;
-        // 4. ERROR: Corchete sin cerrar
-        datos[0 = 100;
-    
-    // 5. ERROR: Llave de cierre sin abrir
-}
-
-    // 6. ERROR: Identificador con numero
-    123variable = 50;
-    
-    // 7. ERROR: Simbolos no permitidos
-    @ $ #
-    
-    // 8. ERROR: Cierre de bloque simulacion faltante
-// ==========================================";
-            }
+                CargarCodigoConErrores();
             else
-            {
-                txtCodigo.Text = @"// Simulacion correcta
-simulacion {
-    planeta {
-        temperatura = 25;
-        gravedad = 9.8;
-    }
-    agua {
-        estado_liquido = verdadero;
-    }
-}";
-            }
+                CargarCodigoCorrecto();
         }
 
         private void BtnCompilar_Click(object? sender, EventArgs e)
@@ -397,60 +723,60 @@ simulacion {
 
             Lexer lexer = new Lexer(txtCodigo.Text);
             List<Token> tokens = lexer.Tokenize();
+            var errores = lexer.Errores;
 
             foreach (var token in tokens)
             {
                 string tokenName = token.Type.ToString().Replace("_", " ");
-                Color? color = null;
-                
-                // Colorear filas de error en la tabla
-                if (token.Type == TokenType.ERROR_LEXICO)
-                    color = Color.LightCoral;
-                    
                 int rowIndex = gridTokens.Rows.Add(tokenName, token.Lexeme, token.Line, token.Column);
-                if (color.HasValue)
+
+                if (token.Type == TokenType.ERROR_LEXICO)
                 {
-                    gridTokens.Rows[rowIndex].DefaultCellStyle.BackColor = color.Value;
+                    gridTokens.Rows[rowIndex].DefaultCellStyle.BackColor = Color.LightCoral;
+                    gridTokens.Rows[rowIndex].DefaultCellStyle.ForeColor = Color.DarkRed;
                 }
             }
 
-            // Mostrar errores en consola
-            if (lexer.Errores.Count > 0 || lexer.ErroresEstructurales.Count > 0)
+            if (errores.Count > 0)
             {
                 txtConsola.SelectionColor = Color.Red;
-                txtConsola.AppendText("❌ ANÁLISIS FALLIDO\n\n");
-                
-                if (lexer.Errores.Count > 0)
+                txtConsola.AppendText("❌ ANÁLISIS COMPLETADO CON ERRORES\n\n");
+
+                var lexicos = errores.Where(e => e.Type == ErrorType.Lexico).ToList();
+                var estructurales = errores.Where(e => e.Type == ErrorType.Estructural).ToList();
+
+                if (lexicos.Count > 0)
                 {
                     txtConsola.SelectionColor = Color.Orange;
-                    txtConsola.AppendText("🔴 ERRORES LÉXICOS:\n");
-                    foreach (string error in lexer.Errores)
+                    txtConsola.AppendText($"🔴 ERRORES LÉXICOS ({lexicos.Count}):\n");
+                    foreach (var error in lexicos)
                     {
                         txtConsola.SelectionColor = Color.Salmon;
-                        txtConsola.AppendText("  • " + error + "\n");
+                        txtConsola.AppendText($"  • Línea {error.Line}, Col {error.Column}: {error.Message}\n");
                     }
                 }
-                
-                if (lexer.ErroresEstructurales.Count > 0)
+
+                if (estructurales.Count > 0)
                 {
                     txtConsola.SelectionColor = Color.Orange;
-                    txtConsola.AppendText("\n🔵 ERRORES ESTRUCTURALES (llaves/parentesis):\n");
-                    foreach (string error in lexer.ErroresEstructurales)
+                    txtConsola.AppendText($"\n🔵 ERRORES ESTRUCTURALES ({estructurales.Count}):\n");
+                    foreach (var error in estructurales)
                     {
                         txtConsola.SelectionColor = Color.LightBlue;
-                        txtConsola.AppendText("  • " + error + "\n");
+                        txtConsola.AppendText($"  • Línea {error.Line}, Col {error.Column}: {error.Message}\n");
                     }
                 }
-                
+
                 txtConsola.SelectionColor = Color.Yellow;
-                txtConsola.AppendText($"\n📊 TOTAL: {lexer.Errores.Count + lexer.ErroresEstructurales.Count} errores");
+                txtConsola.AppendText($"\n📊 TOTAL: {errores.Count} errores");
             }
             else
             {
                 txtConsola.SelectionColor = Color.LimeGreen;
-                txtConsola.AppendText("✅ Análisis completado SIN ERRORES\n");
-                txtConsola.AppendText("📝 Total tokens: " + tokens.Count + "\n");
-                txtConsola.AppendText("🔍 Listo para análisis sintáctico");
+                txtConsola.AppendText("✅ ANÁLISIS COMPLETADO SIN ERRORES\n");
+                txtConsola.AppendText($"📝 Total de tokens: {tokens.Count}\n");
+                txtConsola.SelectionColor = Color.Cyan;
+                txtConsola.AppendText("\n🎯 El código es léxicamente correcto. Listo para análisis sintáctico.");
             }
         }
     }
