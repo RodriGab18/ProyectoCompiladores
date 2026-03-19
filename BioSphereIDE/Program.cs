@@ -322,282 +322,7 @@ namespace BioSphereIDE
         }
     }
 
-    public class CodeEditorWithHighlighting : RichTextBox
-    {
-        private System.Windows.Forms.Timer highlightTimer;
-        private Lexer currentLexer;
-        private List<ErrorInfo> currentErrors = new List<ErrorInfo>();
-
-        // Tooltip para mostrar mensajes de error al pasar el cursor
-        private readonly ToolTip errorToolTip;
-        private string lastTooltipMsg = "";   // evita redibujar si el mensaje no cambió
-        private Point lastTooltipPos = Point.Empty;
-        
-        // COLORES OFICIALES DE VISUAL STUDIO (Dark Theme)
-        private readonly Color FondoColor = Color.FromArgb(30, 30, 30);
-        private readonly Color TextoColor = Color.FromArgb(212, 212, 212); // Gris claro estándar VS
-        private readonly Color PalabraReservadaColor = Color.FromArgb(86, 156, 214); // Azul VS
-        private readonly Color NumeroColor = Color.FromArgb(181, 206, 168); // Verde pálido VS
-        private readonly Color CadenaColor = Color.FromArgb(214, 157, 133); // Naranja/Marrón VS
-        private readonly Color OperadorColor = Color.FromArgb(180, 180, 180); // Gris claro
-        private readonly Color ErrorColor = Color.Red;
-        private readonly Color ComentarioColor = Color.FromArgb(87, 166, 74); // Verde bosque VS
-
-        public CodeEditorWithHighlighting()
-        {
-            this.BackColor = FondoColor;
-            this.ForeColor = TextoColor;
-            this.Font = new Font("Consolas", 14);
-            this.AcceptsTab = true;
-            this.WordWrap = false;
-            this.Dock = DockStyle.Fill;
-            this.BorderStyle = BorderStyle.None;
-
-            // ── Tooltip de errores ──────────────────────────────────────────
-            errorToolTip = new ToolTip
-            {
-                AutoPopDelay  = 8000,   // permanece 8 s visible
-                InitialDelay  = 0,      // aparece sin espera
-                ReshowDelay   = 0,
-                ShowAlways    = true,
-                IsBalloon     = false,
-                BackColor     = Color.FromArgb(45, 10, 10),
-                ForeColor     = Color.FromArgb(255, 180, 180),
-                ToolTipTitle  = "Error léxico",
-            };
-            
-            highlightTimer = new System.Windows.Forms.Timer();
-            highlightTimer.Interval = 500;
-            highlightTimer.Tick += HighlightTimer_Tick;
-            highlightTimer.Start();
-            
-            this.TextChanged += CodeEditorWithHighlighting_TextChanged;
-            this.SelectionChanged += CodeEditorWithHighlighting_SelectionChanged;
-            this.VScroll += CodeEditorWithHighlighting_Scroll;
-            this.MouseMove += CodeEditorWithHighlighting_MouseMove;
-            this.MouseLeave += CodeEditorWithHighlighting_MouseLeave;
-        }
-
-        // ── Hover: detectar si el cursor está sobre un error ───────────────
-        private void CodeEditorWithHighlighting_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (currentErrors == null || currentErrors.Count == 0)
-            {
-                if (lastTooltipMsg != "")
-                {
-                    errorToolTip.Hide(this);
-                    lastTooltipMsg = "";
-                }
-                return;
-            }
-
-            // Convertir posición del mouse a índice de carácter en el texto
-            int charIndex = this.GetCharIndexFromPosition(e.Location);
-            if (charIndex < 0 || charIndex >= this.Text.Length)
-            {
-                errorToolTip.Hide(this);
-                lastTooltipMsg = "";
-                return;
-            }
-
-            // Buscar si ese índice cae dentro de algún error registrado
-            ErrorInfo found = null;
-            foreach (var error in currentErrors)
-            {
-                int errStart = GetPositionFromLineColumn(error.Line, error.Column);
-                if (errStart < 0) continue;
-                int errEnd = errStart + Math.Max(1, error.Length);
-                if (charIndex >= errStart && charIndex < errEnd)
-                {
-                    found = error;
-                    break;
-                }
-            }
-
-            if (found == null)
-            {
-                if (lastTooltipMsg != "")
-                {
-                    errorToolTip.Hide(this);
-                    lastTooltipMsg = "";
-                }
-                return;
-            }
-
-            // Construir mensaje enriquecido
-            string tipoLabel = found.Type == ErrorType.Lexico ? "Error léxico" : "Error estructural";
-            string msg = $"[Línea {found.Line}, Col {found.Column}]  {found.Message}";
-
-            // Solo actualizar si cambió el mensaje o la posición (evita parpadeo)
-            if (msg == lastTooltipMsg && e.Location == lastTooltipPos) return;
-
-            lastTooltipMsg  = msg;
-            lastTooltipPos  = e.Location;
-            errorToolTip.ToolTipTitle = tipoLabel;
-
-            // Mostrar el tooltip ligeramente por encima del cursor
-            Point tipPos = new Point(e.X + 10, e.Y - 28);
-            errorToolTip.Show(msg, this, tipPos, 8000);
-        }
-
-        private void CodeEditorWithHighlighting_MouseLeave(object sender, EventArgs e)
-        {
-            errorToolTip.Hide(this);
-            lastTooltipMsg = "";
-        }
-
-        private void CodeEditorWithHighlighting_Scroll(object sender, EventArgs e)
-        {
-            this.Invalidate();
-        }
-
-        private void CodeEditorWithHighlighting_SelectionChanged(object sender, EventArgs e)
-        {
-            this.Invalidate();
-        }
-
-        private void HighlightTimer_Tick(object sender, EventArgs e)
-        {
-            highlightTimer.Stop();
-            AplicarResaltado();
-            highlightTimer.Start();
-        }
-
-        private void CodeEditorWithHighlighting_TextChanged(object sender, EventArgs e)
-        {
-            highlightTimer.Stop();
-            highlightTimer.Start();
-        }
-
-        private void AplicarResaltado()
-        {
-            if (this.Text.Length == 0) return;
-            
-            try
-            {
-                int selectionStart = this.SelectionStart;
-                int selectionLength = this.SelectionLength;
-                
-                currentLexer = new Lexer(this.Text);
-                var tokens = currentLexer.Tokenize();
-                currentErrors = currentLexer.Errores;
-                
-                this.SuspendLayout();
-                
-                this.SelectAll();
-                this.SelectionColor = TextoColor;
-                
-                foreach (var token in tokens)
-                {
-                    if (token.Type == TokenType.EOF) continue;
-                    
-                    int start = GetPositionFromLineColumn(token.Line, token.Column);
-                    if (start < 0 || start >= this.Text.Length) continue;
-                    
-                    this.Select(start, token.Lexeme.Length);
-                    
-                    switch (token.Type)
-                    {
-                        case TokenType.PALABRA_RESERVADA:
-                            this.SelectionColor = PalabraReservadaColor;
-                            break;
-                        case TokenType.NUMERO:
-                            this.SelectionColor = NumeroColor;
-                            break;
-                        case TokenType.CADENA:
-                            this.SelectionColor = CadenaColor;
-                            break;
-                        case TokenType.OPERADOR:
-                            this.SelectionColor = OperadorColor;
-                            break;
-                        case TokenType.ERROR_LEXICO:
-                            this.SelectionColor = ErrorColor;
-                            break;
-                    }
-                }
-                
-                var commentMatches = Regex.Matches(this.Text, @"//.*$", RegexOptions.Multiline);
-                foreach (Match match in commentMatches)
-                {
-                    this.Select(match.Index, match.Length);
-                    this.SelectionColor = ComentarioColor;
-                }
-                
-                this.Select(selectionStart, selectionLength);
-                this.SelectionColor = TextoColor;
-                
-                this.ResumeLayout();
-                this.Invalidate();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error en resaltado: {ex.Message}");
-            }
-        }
-
-        private int GetPositionFromLineColumn(int line, int column)
-        {
-            string[] lines = this.Text.Split('\n');
-            int pos = 0;
-            
-            for (int i = 1; i < line; i++)
-            {
-                if (i - 1 < lines.Length)
-                    pos += lines[i - 1].Length + 1;
-                else
-                    return -1;
-            }
-            
-            return pos + column - 1;
-        }
-
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            base.OnPaint(e);
-            
-            if (currentErrors != null && currentErrors.Count > 0)
-            {
-                using (Pen errorPen = new Pen(Color.Red, 2))
-                {
-                    errorPen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
-                    
-                    foreach (var error in currentErrors)
-                    {
-                        try
-                        {
-                            int start = GetPositionFromLineColumn(error.Line, error.Column);
-                            if (start < 0 || start >= this.Text.Length) continue;
-                            
-                            Point startPos = this.GetPositionFromCharIndex(start);
-                            int endIndex = Math.Min(start + error.Length, this.Text.Length - 1);
-                            if (endIndex <= start) continue;
-                            
-                            Point endPos = this.GetPositionFromCharIndex(endIndex);
-                            
-                            if (startPos.Y == endPos.Y)
-                            {
-                                int width = endPos.X - startPos.X;
-                                if (width < 5) width = 5;
-                                
-                                e.Graphics.DrawLine(errorPen, 
-                                    startPos.X, startPos.Y + this.Font.Height - 2,
-                                    startPos.X + width, startPos.Y + this.Font.Height - 2);
-                            }
-                            else
-                            {
-                                e.Graphics.DrawLine(errorPen,
-                                    startPos.X, startPos.Y + this.Font.Height - 2,
-                                    this.Width - 20, startPos.Y + this.Font.Height - 2);
-                            }
-                        }
-                        catch { }
-                    }
-                }
-            }
-        }
-
-        public List<ErrorInfo> GetErrores() => currentErrors ?? new List<ErrorInfo>();
-    }
+    
 
     // ==================================================================================
     // VENTANA DE DOCUMENTACIÓN AÑADIDA (Tema Claro - Blanco y Negro)
@@ -724,7 +449,15 @@ namespace BioSphereIDE
 
     public class BioSphereEditor : Form
     {
-        private CodeEditorWithHighlighting txtCodigo;
+        private System.Windows.Forms.Integration.ElementHost editorHost;
+        private ICSharpCode.AvalonEdit.TextEditor txtCodigo;
+        private SyntaxColorizer syntaxColorizer;
+        private CommentColorizer commentColorizer;
+        private ErrorSquiggleRenderer errorRenderer;
+        private System.Windows.Forms.Timer parseTimer;
+        private ToolTip errorToolTip;
+        private List<ErrorInfo> currentErrors = new List<ErrorInfo>();
+        
         private DataGridView gridTokens;
         private RichTextBox txtConsola;
         private Button btnCompilar; 
@@ -841,9 +574,47 @@ namespace BioSphereIDE
                 Dock = DockStyle.Fill
             };
             
-            txtCodigo = new CodeEditorWithHighlighting();
-            
-            leftPanel.Controls.Add(txtCodigo);
+            editorHost = new System.Windows.Forms.Integration.ElementHost { Dock = DockStyle.Fill };
+            txtCodigo = new ICSharpCode.AvalonEdit.TextEditor
+            {
+                FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                FontSize = 14,
+                ShowLineNumbers = true,
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 30, 30)),
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(212, 212, 212))
+            };
+
+            syntaxColorizer = new SyntaxColorizer();
+            commentColorizer = new CommentColorizer();
+            txtCodigo.TextArea.TextView.LineTransformers.Add(syntaxColorizer);
+            txtCodigo.TextArea.TextView.LineTransformers.Add(commentColorizer);
+
+            errorRenderer = new ErrorSquiggleRenderer(txtCodigo);
+            txtCodigo.TextArea.TextView.BackgroundRenderers.Add(errorRenderer);
+
+            parseTimer = new System.Windows.Forms.Timer { Interval = 200 };
+            parseTimer.Tick += ParseTimer_Tick;
+
+            txtCodigo.TextChanged += (s, e) => {
+                parseTimer.Stop();
+                parseTimer.Start();
+            };
+
+            errorToolTip = new ToolTip
+            {
+                AutoPopDelay = 8000,
+                InitialDelay = 0,
+                ReshowDelay = 0,
+                ShowAlways = true,
+                BackColor = Color.FromArgb(45, 10, 10),
+                ForeColor = Color.FromArgb(255, 180, 180)
+            };
+
+            txtCodigo.TextArea.TextView.MouseHover += TextView_MouseHover;
+            txtCodigo.TextArea.TextView.MouseHoverStopped += TextView_MouseHoverStopped;
+
+            editorHost.Child = txtCodigo;
+            leftPanel.Controls.Add(editorHost);
             leftPanel.Controls.Add(topPanel);
 
             // ===== PANEL DERECHO (TOKENS + CONSOLA) =====
@@ -908,10 +679,10 @@ namespace BioSphereIDE
 
         private void ActualizarContadorErrores()
         {
-            if (txtCodigo != null)
+            if (currentErrors != null)
             {
-                var errores = txtCodigo.GetErrores();
-                if (errores != null && errores.Count > 0)
+                var errores = currentErrors;
+                if (errores.Count > 0)
                 {
                     lblErrorCount.Text = $"❌ {errores.Count} error(es) detectado(s)";
                     lblErrorCount.ForeColor = Color.Salmon;
@@ -922,6 +693,74 @@ namespace BioSphereIDE
                     lblErrorCount.ForeColor = Color.LightGreen;
                 }
             }
+        }
+
+        private void ParseTimer_Tick(object? sender, EventArgs e)
+        {
+            parseTimer.Stop();
+            try
+            {
+                Lexer lexer = new Lexer(txtCodigo.Text);
+                var tokens = lexer.Tokenize();
+                currentErrors = lexer.Errores ?? new List<ErrorInfo>();
+
+                syntaxColorizer.UpdateTokens(tokens);
+                errorRenderer.UpdateErrors(currentErrors);
+
+                txtCodigo.TextArea.TextView.Redraw();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error parseando: {ex.Message}");
+            }
+        }
+
+        private void TextView_MouseHover(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (currentErrors == null || currentErrors.Count == 0) return;
+
+            var pos = txtCodigo.GetPositionFromPoint(e.GetPosition(txtCodigo));
+            if (!pos.HasValue) return;
+
+            try 
+            {
+                int offset = txtCodigo.Document.GetOffset(pos.Value.Line, pos.Value.Column);
+
+                ErrorInfo? found = null;
+                foreach (var error in currentErrors)
+                {
+                    int errStart = txtCodigo.Document.GetOffset(error.Line, error.Column);
+                    int errEnd = errStart + Math.Max(1, error.Length);
+
+                    if (offset >= errStart && offset <= errEnd)
+                    {
+                        found = error;
+                        break;
+                    }
+                }
+
+                if (found != null)
+                {
+                    string msg = $"[Línea {found.Line}, Col {found.Column}]  {found.Message}";
+                    var winPos = e.GetPosition(txtCodigo);
+                    var formPos = editorHost.PointToScreen(new Point((int)winPos.X, (int)winPos.Y));
+                    var clientPos = this.PointToClient(formPos);
+                    
+                    errorToolTip.ToolTipTitle = found.Type == ErrorType.Lexico ? "Error léxico" : "Error estructural";
+                    errorToolTip.Show(msg, this, clientPos.X + 10, clientPos.Y - 28, 8000);
+                    e.Handled = true;
+                }
+                else
+                {
+                    errorToolTip.Hide(this);
+                }
+            }
+            catch { /* Ignore invalid offsets */ }
+        }
+
+        private void TextView_MouseHoverStopped(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            errorToolTip.Hide(this);
         }
 
         private void CargarCodigoCorrecto()
