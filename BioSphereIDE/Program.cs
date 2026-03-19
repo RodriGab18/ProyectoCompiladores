@@ -76,15 +76,33 @@ namespace BioSphereIDE
 
                 // Números
                 new TokenDefinition(TokenType.NUMERO, @"-?\d+(\.\d+)?"),
+                new TokenDefinition(TokenType.NUMERO, @"\d+\.\d+"),
+                new TokenDefinition(TokenType.NUMERO, @"\d+"),
 
                 // Cadenas de texto
-                new TokenDefinition(TokenType.CADENA, "\"[^\"]*\""),
+                // Cadena correctamente cerrada
+                new TokenDefinition(TokenType.CADENA, "\"[^\"\r\n]*\""),
+                // Cadena sin cerrar → ERROR LÉXICO
+                new TokenDefinition(TokenType.ERROR_LEXICO, "\"[^\"\r\n]*$"),
 
                 // Símbolos del lenguaje
                 new TokenDefinition(TokenType.SIMBOLO, @"\(|\)|\{|\}|\[|\]|;|,|\.|°"),
 
                 // Identificadores válidos
                 new TokenDefinition(TokenType.IDENTIFICADOR, @"[a-zA-Z][a-zA-Z0-9_]*"),
+                 // Física
+                new TokenDefinition(TokenType.PALABRA_RESERVADA,
+                    @"\b(gravedad|radiacion|temperatura|velocidad|densidad|composicion)\b"),
+                // Control de flujo
+                new TokenDefinition(TokenType.PALABRA_RESERVADA,
+                    @"\b(si|sino|mientras|para|iterar|repetir|encontrar|esperar|continuar|interrumpir|romper)\b"),
+                // Lógica y tipos
+                new TokenDefinition(TokenType.PALABRA_RESERVADA,
+                    @"\b(y|o|no|verdadero|falso|nulo|entero|booleano|decimal|texto)\b"),
+                // Acciones
+                new TokenDefinition(TokenType.PALABRA_RESERVADA,
+                    @"\b(resultado|mostrar|guardar|reporte|analizar|configuracion)\b"),
+
             };
         }
 
@@ -247,12 +265,20 @@ namespace BioSphereIDE
                     {
                         if (def.Type == TokenType.ERROR_LEXICO)
                         {
+                            string msg;
+                            if (System.Text.RegularExpressions.Regex.IsMatch(match.Value, @"^\d+[a-zA-Z_]"))
+                                msg = $"Identificador inválido '{match.Value}': no puede comenzar con un número";
+                            else if (match.Value.StartsWith("\""))
+                                msg = $"Cadena de texto sin cerrar: {match.Value}";
+                            else
+                                msg = $"Carácter ilegal '{match.Value}' no permitido en ASTRA";
+
                             Errores.Add(new ErrorInfo
                             {
                                 Line = _line,
                                 Column = _column,
                                 Length = match.Value.Length,
-                                Message = $"'{match.Value}' no permitido",
+                                Message = msg,
                                 Type = ErrorType.Lexico
                             });
                         }
@@ -301,6 +327,11 @@ namespace BioSphereIDE
         private System.Windows.Forms.Timer highlightTimer;
         private Lexer currentLexer;
         private List<ErrorInfo> currentErrors = new List<ErrorInfo>();
+
+        // Tooltip para mostrar mensajes de error al pasar el cursor
+        private readonly ToolTip errorToolTip;
+        private string lastTooltipMsg = "";   // evita redibujar si el mensaje no cambió
+        private Point lastTooltipPos = Point.Empty;
         
         // Colores del tema
         private readonly Color FondoColor = Color.FromArgb(30, 30, 30);
@@ -321,6 +352,19 @@ namespace BioSphereIDE
             this.WordWrap = false;
             this.Dock = DockStyle.Fill;
             this.BorderStyle = BorderStyle.None;
+
+            // ── Tooltip de errores ──────────────────────────────────────────
+            errorToolTip = new ToolTip
+            {
+                AutoPopDelay  = 8000,   // permanece 8 s visible
+                InitialDelay  = 0,      // aparece sin espera
+                ReshowDelay   = 0,
+                ShowAlways    = true,
+                IsBalloon     = false,
+                BackColor     = Color.FromArgb(45, 10, 10),
+                ForeColor     = Color.FromArgb(255, 180, 180),
+                ToolTipTitle  = "Error léxico",
+            };
             
             highlightTimer = new System.Windows.Forms.Timer();
             highlightTimer.Interval = 500;
@@ -330,6 +374,76 @@ namespace BioSphereIDE
             this.TextChanged += CodeEditorWithHighlighting_TextChanged;
             this.SelectionChanged += CodeEditorWithHighlighting_SelectionChanged;
             this.VScroll += CodeEditorWithHighlighting_Scroll;
+            this.MouseMove += CodeEditorWithHighlighting_MouseMove;
+            this.MouseLeave += CodeEditorWithHighlighting_MouseLeave;
+        }
+
+        // ── Hover: detectar si el cursor está sobre un error ───────────────
+        private void CodeEditorWithHighlighting_MouseMove(object? sender, MouseEventArgs e)
+        {
+            if (currentErrors == null || currentErrors.Count == 0)
+            {
+                if (lastTooltipMsg != "")
+                {
+                    errorToolTip.Hide(this);
+                    lastTooltipMsg = "";
+                }
+                return;
+            }
+
+            // Convertir posición del mouse a índice de carácter en el texto
+            int charIndex = this.GetCharIndexFromPosition(e.Location);
+            if (charIndex < 0 || charIndex >= this.Text.Length)
+            {
+                errorToolTip.Hide(this);
+                lastTooltipMsg = "";
+                return;
+            }
+
+            // Buscar si ese índice cae dentro de algún error registrado
+            ErrorInfo? found = null;
+            foreach (var error in currentErrors)
+            {
+                int errStart = GetPositionFromLineColumn(error.Line, error.Column);
+                if (errStart < 0) continue;
+                int errEnd = errStart + Math.Max(1, error.Length);
+                if (charIndex >= errStart && charIndex < errEnd)
+                {
+                    found = error;
+                    break;
+                }
+            }
+
+            if (found == null)
+            {
+                if (lastTooltipMsg != "")
+                {
+                    errorToolTip.Hide(this);
+                    lastTooltipMsg = "";
+                }
+                return;
+            }
+
+            // Construir mensaje enriquecido
+            string tipoLabel = found.Type == ErrorType.Lexico ? "Error léxico" : "Error estructural";
+            string msg = $"[Línea {found.Line}, Col {found.Column}]  {found.Message}";
+
+            // Solo actualizar si cambió el mensaje o la posición (evita parpadeo)
+            if (msg == lastTooltipMsg && e.Location == lastTooltipPos) return;
+
+            lastTooltipMsg  = msg;
+            lastTooltipPos  = e.Location;
+            errorToolTip.ToolTipTitle = tipoLabel;
+
+            // Mostrar el tooltip ligeramente por encima del cursor
+            Point tipPos = new Point(e.X + 10, e.Y - 28);
+            errorToolTip.Show(msg, this, tipPos, 8000);
+        }
+
+        private void CodeEditorWithHighlighting_MouseLeave(object? sender, EventArgs e)
+        {
+            errorToolTip.Hide(this);
+            lastTooltipMsg = "";
         }
 
         private void CodeEditorWithHighlighting_Scroll(object? sender, EventArgs e)
