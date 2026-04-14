@@ -480,24 +480,36 @@ namespace BioSphereIDE
 
         private void CargarCodigoCorrecto()
         {
-            txtCodigo.Text = @"// Simulación de planeta Marte - CORRECTO
-simulacion {
-    planeta {
-        temperatura = -60;
-        gravedad = 3.7;
-        radio = 3389;
+            txtCodigo.Text = @"inicio
+    simulacion {
+        planeta {
+            radio = 6371;
+            masa = 5;
+            // Árbol 1: Matemática compleja con paréntesis y precedencia
+            gravedad = ( 6 * masa ) / ( radio ^ 2 ) ;
+        }
+        
+        atmosfera {
+            oxigeno = 21;
+            co2 = 5;
+        }
+
+        vida {
+            // Árbol 2: Condicional con operadores lógicos
+            si ( gravedad > 8 y gravedad < 12 ) {
+                mostrar ""Gravedad optima"" ;
+            } sino {
+                reporte ""Gravedad extrema"" ;
+            }
+            
+            // Árbol 3: Bucle iterativo con reasignación matemática
+            mientras ( co2 > 0 ) {
+                co2 = co2 - 1 ;
+                mostrar ""Reduciendo CO2"" ;
+            }
+        }
     }
-    atmosfera {
-        presion = 0.006;
-        co2 = 95;
-    }
-    agua {
-        estado_liquido = falso;
-    }
-    si (temperatura > -50 y presion < 1) {
-        mostrar(""Posible terraformación"");
-    }
-}";
+fin";
         }
 
         private void CargarCodigoConErrores()
