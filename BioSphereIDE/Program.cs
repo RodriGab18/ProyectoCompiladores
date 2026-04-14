@@ -39,7 +39,7 @@ namespace BioSphereIDE
         public int Line { get; set; }
         public int Column { get; set; }
         public int Length { get; set; }
-        public string Message { get; set; }
+        public string Message { get; set; } = "";
         public ErrorType Type { get; set; }
     }
 
@@ -66,8 +66,7 @@ namespace BioSphereIDE
     // Símbolos no permitidos
     new TokenDefinition(TokenType.ERROR_LEXICO, @"[@#$%&!?|\\~`]"),
 
-    // NÚMEROS (incluyen negativos)
-    new TokenDefinition(TokenType.NUMERO, @"-?\d+(\.\d+)?"),
+    // NÚMEROS
     new TokenDefinition(TokenType.NUMERO, @"\d+\.\d+"),
     new TokenDefinition(TokenType.NUMERO, @"\d+"),
 
@@ -184,11 +183,11 @@ namespace BioSphereIDE
                 TabPage page = tabs.TabPages[e.Index];
                 Rectangle tabBounds = tabs.GetTabRect(e.Index);
 
-                // Tema Claro para las pestañas
                 Color backColor = e.State == DrawItemState.Selected ? Color.White : Color.FromArgb(240, 240, 240);
                 Color foreColor = Color.Black;
 
-                g.FillRectangle(new SolidBrush(backColor), tabBounds);
+                using (var brush = new SolidBrush(backColor))
+                    g.FillRectangle(brush, tabBounds);
                 TextRenderer.DrawText(g, page.Text, tabs.Font, tabBounds, foreColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
             };
 
@@ -516,19 +515,19 @@ simulacion {{
 ";
         }
 
-        private void ChkModoPrueba_CheckedChanged(object sender, EventArgs e)
+        private void ChkModoPrueba_CheckedChanged(object? sender, EventArgs e)
         {
             if (chkModoPrueba.Checked) CargarCodigoConErrores();
             else CargarCodigoCorrecto();
         }
 
-        private void BtnDocumentacion_Click(object sender, EventArgs e)
+        private void BtnDocumentacion_Click(object? sender, EventArgs e)
         {
             using (FrmDocumentacion doc = new FrmDocumentacion()) doc.ShowDialog(this);
         }
 
         // ==================== MÉTODO DE ANÁLISIS PRINCIPAL (MODIFICADO) ====================
-        private void BtnCompilar_Click(object sender, EventArgs e)
+        private void BtnCompilar_Click(object? sender, EventArgs e)
         {
             gridTokens.Rows.Clear();
             txtConsola.Clear();
@@ -604,7 +603,8 @@ simulacion {{
             var arbolesVisual = new List<NodoASTVisual>();
 
             // 1. Árbol global del programa
-            arbolesVisual.Add(ConvertirAST(ultimoAST));
+            var arbolGlobal = ConvertirAST(ultimoAST);
+            if (arbolGlobal != null) arbolesVisual.Add(arbolGlobal);
 
             // 2. Subárboles extraídos (expresiones complejas, condicionales, bucles)
             var subArboles = ExtraerSubArboles(ultimoAST);
@@ -723,19 +723,29 @@ simulacion {{
                     visual.Hijos.Add(ConvertirAST(pot.Exponente)!);
                     break;
                 case NodoExprParentesis par:
-                    etiqueta = "( )";
-                    tipo = "Parentesis";
+                    if (par.Expr != null)
+                        visual.Hijos.Add(ConvertirAST(par.Expr)!);
                     break;
                 case NodoCondicion cond:
-                    if (!string.IsNullOrEmpty(cond.Operador))
-                        etiqueta = cond.Operador;   // muestra <, >, ==, etc.
-                    else
-                        etiqueta = "cond";
-                    tipo = "Condicion";
+                    if (cond.Izquierda != null)
+                        visual.Hijos.Add(ConvertirAST(cond.Izquierda)!);
+                    if (!string.IsNullOrEmpty(cond.Operador) && cond.Derecha != null)
+                    {
+                        visual.Hijos.Add(new NodoASTVisual(cond.Operador, "Operador"));
+                        visual.Hijos.Add(ConvertirAST(cond.Derecha)!);
+                    }
+                    foreach (var (op, sub) in cond.OperadoresLogicos)
+                    {
+                        visual.Hijos.Add(new NodoASTVisual(op, "Operador"));
+                        var subVisual = ConvertirAST(sub);
+                        if (subVisual != null) visual.Hijos.Add(subVisual);
+                    }
                     break;
                 case NodoCantidad cant:
-                    etiqueta = "Cantidad";
-                    tipo = "Cantidad";
+                    if (cant.Expr != null)
+                        visual.Hijos.Add(ConvertirAST(cant.Expr)!);
+                    if (cant.Unidad != null)
+                        visual.Hijos.Add(new NodoASTVisual(cant.Unidad, "Identificador"));
                     break;
                 case NodoLista lista:
                     foreach (var v in lista.Valores) visual.Hijos.Add(ConvertirAST(v)!);
@@ -754,28 +764,20 @@ simulacion {{
                 if (nodo == null) return;
 
                 // Detectar expresiones aritméticas complejas (con al menos dos operadores o paréntesis)
-                if (nodo is NodoExprBinaria binaria && (EsExpresionCompleja(binaria)))
-                {
-                    subArboles.Add(ConvertirAST(binaria));
-                }
+                NodoASTVisual? subVisual = null;
+                if (nodo is NodoExprBinaria binaria && EsExpresionCompleja(binaria))
+                    subVisual = ConvertirAST(binaria);
                 else if (nodo is NodoExprPotencia potencia && EsExpresionCompleja(potencia))
-                {
-                    subArboles.Add(ConvertirAST(potencia));
-                }
+                    subVisual = ConvertirAST(potencia);
                 else if (nodo is NodoExprParentesis parentesis && EsExpresionCompleja(parentesis.Expr))
-                {
-                    subArboles.Add(ConvertirAST(parentesis));
-                }
-                // Detectar sentencias condicionales (si)
+                    subVisual = ConvertirAST(parentesis);
                 else if (nodo is NodoIf nodoIf)
-                {
-                    subArboles.Add(ConvertirAST(nodoIf));
-                }
-                // Detectar bucles (mientras)
+                    subVisual = ConvertirAST(nodoIf);
                 else if (nodo is NodoWhile nodoWhile)
-                {
-                    subArboles.Add(ConvertirAST(nodoWhile));
-                }
+                    subVisual = ConvertirAST(nodoWhile);
+
+                if (subVisual != null)
+                    subArboles.Add(subVisual);
 
                 // Recorrer hijos según el tipo de nodo (similar a ConvertirAST)
                 switch (nodo)

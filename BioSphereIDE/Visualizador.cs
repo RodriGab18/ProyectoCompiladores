@@ -23,9 +23,9 @@ namespace BioSphereIDE
           {
                     private List<NodoASTVisual> arboles;
                     private int indiceActual = 0;
-                    private Panel canvas;
+                    private Panel canvas = null!;
                     private float zoom = 1.0f;
-                    private Label lblEstado;
+                    private Label lblEstado = null!;
 
                     public FrmVisualizadorArbol(List<NodoASTVisual> arbolesAnalizados)
                     {
@@ -98,59 +98,63 @@ namespace BioSphereIDE
                               if (arboles.Count == 0) return;
                               ActualizarEstado();
 
-                              // Calculamos el ancho y alto total del árbol (layout)
                               var tamanios = new Dictionary<NodoASTVisual, SizeF>();
-                              CalcularTamanios(arboles[indiceActual], g, tamanios);
+                              using (var medirFont = new Font("Consolas", 9, FontStyle.Bold))
+                                        CalcularTamanios(arboles[indiceActual], g, tamanios, medirFont);
                               var posiciones = new Dictionary<NodoASTVisual, PointF>();
                               int anchoTotal = (int)ColocarNodos(arboles[indiceActual], 0, 0, tamanios, posiciones, g);
-                              int altoTotal = (int)(posiciones[arboles[indiceActual]].Y + tamanios[arboles[indiceActual]].Height + 50);
 
-                              // Centrar el árbol si es más pequeño que el canvas (con zoom)
                               float offsetX = (canvas.Width / zoom - anchoTotal) / 2;
                               float offsetY = 20;
 
-                              // Dibujar líneas primero
-                              foreach (var nodo in posiciones.Keys)
+                              using (var linePen = new Pen(Color.FromArgb(120, 120, 120), 2))
                               {
-                                        var pos = posiciones[nodo];
-                                        var tam = tamanios[nodo];
-                                        PointF centroPadre = new PointF(pos.X + tam.Width / 2, pos.Y + tam.Height);
-                                        foreach (var hijo in nodo.Hijos)
+                                        foreach (var nodo in posiciones.Keys)
                                         {
-                                                  var posHijo = posiciones[hijo];
-                                                  var tamHijo = tamanios[hijo];
-                                                  PointF centroHijo = new PointF(posHijo.X + tamHijo.Width / 2, posHijo.Y);
-                                                  g.DrawLine(new Pen(Color.FromArgb(120, 120, 120), 2),
-                                                      centroPadre.X + offsetX, centroPadre.Y + offsetY,
-                                                      centroHijo.X + offsetX, centroHijo.Y + offsetY);
+                                                  var pos = posiciones[nodo];
+                                                  var tam = tamanios[nodo];
+                                                  PointF centroPadre = new PointF(pos.X + tam.Width / 2, pos.Y + tam.Height);
+                                                  foreach (var hijo in nodo.Hijos)
+                                                  {
+                                                            if (!posiciones.ContainsKey(hijo)) continue;
+                                                            var posHijo = posiciones[hijo];
+                                                            var tamHijo = tamanios[hijo];
+                                                            PointF centroHijo = new PointF(posHijo.X + tamHijo.Width / 2, posHijo.Y);
+                                                            g.DrawLine(linePen,
+                                                                centroPadre.X + offsetX, centroPadre.Y + offsetY,
+                                                                centroHijo.X + offsetX, centroHijo.Y + offsetY);
+                                                  }
                                         }
                               }
 
-                              // Dibujar nodos (rectángulos) encima
-                              foreach (var nodo in posiciones.Keys)
+                              using (var borderPen = new Pen(Color.FromArgb(80, 80, 80), 1.5f))
+                              using (var nodeFont = new Font("Consolas", 9, FontStyle.Bold))
+                              using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                               {
-                                        var pos = posiciones[nodo];
-                                        var tam = tamanios[nodo];
-                                        RectangleF rect = new RectangleF(pos.X + offsetX, pos.Y + offsetY, tam.Width, tam.Height);
-                                        Brush colorFondo = ObtenerColorFondo(nodo.TipoElemento);
-                                        g.FillRoundRectangle(colorFondo, rect, 10);
-                                        g.DrawRoundRectangle(new Pen(Color.FromArgb(80, 80, 80), 1.5f), rect, 10);
-                                        using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                                        foreach (var nodo in posiciones.Keys)
                                         {
-                                                  g.DrawString(nodo.Etiqueta, new Font("Consolas", 9, FontStyle.Bold), Brushes.Black, rect, sf);
+                                                  var pos = posiciones[nodo];
+                                                  var tam = tamanios[nodo];
+                                                  RectangleF rect = new RectangleF(pos.X + offsetX, pos.Y + offsetY, tam.Width, tam.Height);
+                                                  Brush colorFondo = ObtenerColorFondo(nodo.TipoElemento);
+                                                  g.FillRoundRectangle(colorFondo, rect, 10);
+                                                  g.DrawRoundRectangle(borderPen, rect, 10);
+                                                  g.DrawString(nodo.Etiqueta, nodeFont, Brushes.Black, rect, sf);
                                         }
                               }
                     }
 
-                    private void CalcularTamanios(NodoASTVisual nodo, Graphics g, Dictionary<NodoASTVisual, SizeF> dict)
+                    private void CalcularTamanios(NodoASTVisual nodo, Graphics g, Dictionary<NodoASTVisual, SizeF> dict, Font font)
                     {
-                              var formato = new StringFormat(StringFormat.GenericTypographic);
-                              SizeF tamTexto = g.MeasureString(nodo.Etiqueta, new Font("Consolas", 9, FontStyle.Bold), int.MaxValue, formato);
-                              float ancho = Math.Max(tamTexto.Width + 20, 40);
-                              float alto = Math.Max(tamTexto.Height + 12, 30);
-                              dict[nodo] = new SizeF(ancho, alto);
+                              using (var formato = new StringFormat(StringFormat.GenericTypographic))
+                              {
+                                        SizeF tamTexto = g.MeasureString(nodo.Etiqueta, font, int.MaxValue, formato);
+                                        float ancho = Math.Max(tamTexto.Width + 20, 40);
+                                        float alto = Math.Max(tamTexto.Height + 12, 30);
+                                        dict[nodo] = new SizeF(ancho, alto);
+                              }
                               foreach (var hijo in nodo.Hijos)
-                                        CalcularTamanios(hijo, g, dict);
+                                        CalcularTamanios(hijo, g, dict, font);
                     }
 
                     private float ColocarNodos(NodoASTVisual nodo, float x, float y, Dictionary<NodoASTVisual, SizeF> tamanios,

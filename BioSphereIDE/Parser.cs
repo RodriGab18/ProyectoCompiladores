@@ -12,7 +12,7 @@ namespace BioSphereIDE
 
     public class NodoPrograma : NodoAST
     {
-        public NodoBloqueSimulacion BloqueSimulacion { get; set; }
+        public NodoBloqueSimulacion BloqueSimulacion { get; set; } = null!;
         public override string ToTreeString(string indent, bool isLast)
         {
             var sb = new StringBuilder();
@@ -114,8 +114,8 @@ namespace BioSphereIDE
 
     public class NodoAsignacion : NodoSentencia
     {
-        public string Identificador { get; set; }
-        public NodoValor Valor { get; set; }
+        public string Identificador { get; set; } = "";
+        public NodoValor Valor { get; set; } = null!;
         public override string ToTreeString(string indent, bool isLast)
         {
             return indent + (isLast ? "└── " : "├── ") + $"ASIGNACION: {Identificador} = {Valor?.ToString() ?? "?"}\n";
@@ -124,7 +124,7 @@ namespace BioSphereIDE
 
     public class NodoMostrar : NodoSentencia
     {
-        public NodoValor Valor { get; set; }
+        public NodoValor Valor { get; set; } = null!;
         public override string ToTreeString(string indent, bool isLast)
         {
             return indent + (isLast ? "└── " : "├── ") + $"MOSTRAR: {Valor?.ToString() ?? "?"}\n";
@@ -133,7 +133,7 @@ namespace BioSphereIDE
 
     public class NodoReporte : NodoSentencia
     {
-        public NodoValor Valor { get; set; }
+        public NodoValor Valor { get; set; } = null!;
         public override string ToTreeString(string indent, bool isLast)
         {
             return indent + (isLast ? "└── " : "├── ") + $"REPORTE: {Valor?.ToString() ?? "?"}\n";
@@ -142,7 +142,7 @@ namespace BioSphereIDE
 
     public class NodoIf : NodoSentencia
     {
-        public NodoCondicion Condicion { get; set; }
+        public NodoCondicion Condicion { get; set; } = null!;
         public List<NodoSentencia> ThenSentencias { get; set; } = new List<NodoSentencia>();
         public List<NodoSentencia> ElseSentencias { get; set; } = new List<NodoSentencia>();
         public override string ToTreeString(string indent, bool isLast)
@@ -168,7 +168,7 @@ namespace BioSphereIDE
 
     public class NodoWhile : NodoSentencia
     {
-        public NodoCondicion Condicion { get; set; }
+        public NodoCondicion Condicion { get; set; } = null!;
         public List<NodoSentencia> Sentencias { get; set; } = new List<NodoSentencia>();
         public override string ToTreeString(string indent, bool isLast)
         {
@@ -186,9 +186,9 @@ namespace BioSphereIDE
 
     public class NodoCondicion : NodoAST
     {
-        public NodoValor Izquierda { get; set; }
-        public string Operador { get; set; }
-        public NodoValor Derecha { get; set; }
+        public NodoValor Izquierda { get; set; } = null!;
+        public string? Operador { get; set; }
+        public NodoValor? Derecha { get; set; }
         public List<(string op, NodoCondicion cond)> OperadoresLogicos { get; set; } = new List<(string, NodoCondicion)>();
         public override string ToTreeString(string indent, bool isLast)
         {
@@ -216,8 +216,8 @@ namespace BioSphereIDE
 
     public class NodoCantidad : NodoValor
     {
-        public NodoExpr Expr { get; set; }
-        public string Unidad { get; set; }
+        public NodoExpr Expr { get; set; } = null!;
+        public string? Unidad { get; set; }
         public override string ToString() => Expr?.ToString() + (Unidad != null ? " " + Unidad : "");
         public override string ToTreeString(string indent, bool isLast)
         {
@@ -246,7 +246,7 @@ namespace BioSphereIDE
 
     public class NodoTexto : NodoValor
     {
-        public string Texto { get; set; }
+        public string Texto { get; set; } = "";
         public override string ToString() => $"\"{Texto}\"";
         public override string ToTreeString(string indent, bool isLast)
         {
@@ -273,9 +273,9 @@ namespace BioSphereIDE
 
     public class NodoExprBinaria : NodoExpr
     {
-        public NodoExpr Izquierda { get; set; }
-        public string Operador { get; set; }
-        public NodoExpr Derecha { get; set; }
+        public NodoExpr Izquierda { get; set; } = null!;
+        public string Operador { get; set; } = "";
+        public NodoExpr Derecha { get; set; } = null!;
         public override string ToString() => $"({Izquierda} {Operador} {Derecha})";
         public override string ToTreeString(string indent, bool isLast)
         {
@@ -290,8 +290,8 @@ namespace BioSphereIDE
 
     public class NodoExprPotencia : NodoExpr
     {
-        public NodoExpr Base { get; set; }
-        public NodoExpr Exponente { get; set; }
+        public NodoExpr Base { get; set; } = null!;
+        public NodoExpr Exponente { get; set; } = null!;
         public override string ToString() => $"({Base}^{Exponente})";
         public override string ToTreeString(string indent, bool isLast)
         {
@@ -306,7 +306,7 @@ namespace BioSphereIDE
 
     public class NodoExprNumero : NodoExpr
     {
-        public string Valor { get; set; }
+        public string Valor { get; set; } = "";
         public override string ToString() => Valor;
         public override string ToTreeString(string indent, bool isLast)
         {
@@ -316,7 +316,7 @@ namespace BioSphereIDE
 
     public class NodoExprIdentificador : NodoExpr
     {
-        public string Nombre { get; set; }
+        public string Nombre { get; set; } = "";
         public override string ToString() => Nombre;
         public override string ToTreeString(string indent, bool isLast)
         {
@@ -326,7 +326,7 @@ namespace BioSphereIDE
 
     public class NodoExprParentesis : NodoExpr
     {
-        public NodoExpr Expr { get; set; }
+        public NodoExpr Expr { get; set; } = null!;
         public override string ToString() => $"({Expr})";
         public override string ToTreeString(string indent, bool isLast)
         {
@@ -341,7 +341,7 @@ namespace BioSphereIDE
     // Nodos para funciones
     public class NodoDefinicionFuncion : NodoSentencia
     {
-        public string Nombre { get; set; }
+        public string Nombre { get; set; } = "";
         public List<string> Parametros { get; set; } = new List<string>();
         public List<NodoSentencia> Sentencias { get; set; } = new List<NodoSentencia>();
         public override string ToTreeString(string indent, bool isLast)
@@ -359,7 +359,7 @@ namespace BioSphereIDE
 
     public class NodoLlamadaFuncion : NodoExpr
     {
-        public string Nombre { get; set; }
+        public string Nombre { get; set; } = "";
         public List<NodoValor> Argumentos { get; set; } = new List<NodoValor>();
         public override string ToString() => $"{Nombre}({string.Join(", ", Argumentos)})";
         public override string ToTreeString(string indent, bool isLast)
@@ -381,7 +381,7 @@ namespace BioSphereIDE
 
     public class NodoExpresionSentencia : NodoSentencia
     {
-        public NodoExpr Expresion { get; set; }
+        public NodoExpr Expresion { get; set; } = null!;
         public override string ToTreeString(string indent, bool isLast)
         {
             return Expresion.ToTreeString(indent, isLast);
@@ -395,7 +395,7 @@ namespace BioSphereIDE
         private int _pos;
         private List<ErrorInfo> _errores;
         private Dictionary<string, int> _funcionesDefinidas = new Dictionary<string, int>();
-        private Token Current => _pos < _tokens.Count ? _tokens[_pos] : null;
+        private Token? Current => _pos < _tokens.Count ? _tokens[_pos] : null;
 
         public Parser(List<Token> tokens)
         {
@@ -411,7 +411,7 @@ namespace BioSphereIDE
                 _pos++;
         }
 
-        private void AddError(string message, Token token)
+        private void AddError(string message, Token? token)
         {
             _errores.Add(new ErrorInfo
             {
@@ -629,12 +629,11 @@ namespace BioSphereIDE
             var idToken = Current;
             if (idToken == null) return null;
 
-            // Mirar el siguiente token sin consumir el identificador todavía
-            int savedPos = _pos;
             Token? next = (_pos + 1 < _tokens.Count) ? _tokens[_pos + 1] : null;
             if (next != null && next.Type == TokenType.SIMBOLO && next.Lexeme == "(")
             {
-                // Es llamada a función como sentencia
+                _pos++;
+                SkipComments();
                 var llamada = ParseLlamadaFuncion(idToken.Lexeme);
                 if (llamada != null)
                 {
@@ -645,7 +644,6 @@ namespace BioSphereIDE
             }
             else
             {
-                // Es asignación
                 return ParseAsignacion();
             }
         }
@@ -729,7 +727,7 @@ namespace BioSphereIDE
         {
             var leftVal = ParseValor();
             if (leftVal == null) return null;
-            string op = null;
+            string? op = null;
             NodoValor? rightVal = null;
             if (IsRelationalOperator())
             {
@@ -807,7 +805,7 @@ namespace BioSphereIDE
         {
             var expr = ParseExpr();
             if (expr == null) return null;
-            string unidad = null;
+            string? unidad = null;
             if (IsUnidad())
             {
                 unidad = Current!.Lexeme;
@@ -873,6 +871,14 @@ namespace BioSphereIDE
 
         private NodoExpr? ParseFactor()
         {
+            if (Peek(TokenType.OPERADOR, "-"))
+            {
+                _pos++;
+                SkipComments();
+                var operand = ParseFactor();
+                if (operand == null) return null;
+                return new NodoExprBinaria { Izquierda = new NodoExprNumero { Valor = "0" }, Operador = "-", Derecha = operand };
+            }
             if (Peek(TokenType.SIMBOLO, "("))
             {
                 if (!Eat(TokenType.SIMBOLO, "(")) return null;
@@ -890,12 +896,12 @@ namespace BioSphereIDE
             if (Peek(TokenType.IDENTIFICADOR))
             {
                 var idToken = Current;
-                // Verificar si es llamada a función
-                int savedPos = _pos;
                 Token? next = (_pos + 1 < _tokens.Count) ? _tokens[_pos + 1] : null;
                 if (next != null && next.Type == TokenType.SIMBOLO && next.Lexeme == "(")
                 {
-                    var llamada = ParseLlamadaFuncion(idToken.Lexeme);
+                    _pos++;
+                    SkipComments();
+                    var llamada = ParseLlamadaFuncion(idToken!.Lexeme);
                     if (llamada != null) return llamada;
                     return null;
                 }
