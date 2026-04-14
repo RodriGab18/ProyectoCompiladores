@@ -57,48 +57,33 @@ namespace BioSphereIDE
         {
             _sourceCode = sourceCode;
             _tokenDefinitions = new List<TokenDefinition>
-            {
-                // Palabras reservadas (solo estructurales y de control)
-                new TokenDefinition(TokenType.PALABRA_RESERVADA, @"\b(simulacion|planeta|atmosfera|agua|vida|inicio|fin|si|sino|mientras|iterar|continuar|romper|reporte|mostrar|verdadero|falso|nulo|y|o|funcion)\b"),
+{
+    // Palabras reservadas (estructurales y de control)
+    new TokenDefinition(TokenType.PALABRA_RESERVADA, @"\b(simulacion|planeta|atmosfera|agua|vida|inicio|fin|si|sino|mientras|iterar|continuar|romper|reporte|mostrar|verdadero|falso|nulo|y|o|funcion)\b"),
 
-                // NÚMEROS (incluyen negativos) - DEBEN IR ANTES QUE OPERADOR
-                new TokenDefinition(TokenType.NUMERO, @"-?\d+(\.\d+)?"),
-                new TokenDefinition(TokenType.NUMERO, @"\d+\.\d+"),
-                new TokenDefinition(TokenType.NUMERO, @"\d+"),
+    // ERRORES LÉXICOS: números pegados a letras (DEBEN IR ANTES QUE NUMERO)
+    new TokenDefinition(TokenType.ERROR_LEXICO, @"\d+[a-zA-Z_][a-zA-Z0-9_]*"),
+    // Símbolos no permitidos
+    new TokenDefinition(TokenType.ERROR_LEXICO, @"[@#$%&!?|\\~`]"),
 
-                // OPERADORES
-                new TokenDefinition(TokenType.OPERADOR, @"<=|>=|==|!=|<|>|\+|-|\*|/|=|\^"),
+    // NÚMEROS (incluyen negativos)
+    new TokenDefinition(TokenType.NUMERO, @"-?\d+(\.\d+)?"),
+    new TokenDefinition(TokenType.NUMERO, @"\d+\.\d+"),
+    new TokenDefinition(TokenType.NUMERO, @"\d+"),
 
-                // ERRORES LÉXICOS
-                new TokenDefinition(TokenType.ERROR_LEXICO, @"\d+[a-zA-Z_][a-zA-Z0-9_]*"),
-                new TokenDefinition(TokenType.ERROR_LEXICO, @"[@#$^&*!?|\\~`]"),
+    // OPERADORES (incluye - pero los números negativos ya fueron capturados)
+    new TokenDefinition(TokenType.OPERADOR, @"<=|>=|==|!=|<|>|\+|-|\*|/|=|\^"),
 
-                // Cadenas
-                new TokenDefinition(TokenType.CADENA, "\"[^\"\r\n]*\""),
+    // Cadenas de texto (correctas y con error si no se cierran)
+    new TokenDefinition(TokenType.CADENA, "\"[^\"\r\n]*\""),
+    new TokenDefinition(TokenType.ERROR_LEXICO, "\"[^\"\r\n]*$"),
 
-                // Cadena sin cerrar → ERROR LÉXICO
-                new TokenDefinition(TokenType.ERROR_LEXICO, "\"[^\"\r\n]*(?=\r|\n|$)"),
+    // Símbolos del lenguaje
+    new TokenDefinition(TokenType.SIMBOLO, @"\(|\)|\{|\}|\[|\]|;|,|\.|°"),
 
-                // Símbolos del lenguaje
-                new TokenDefinition(TokenType.SIMBOLO, @"\(|\)|\{|\}|\[|\]|;|,|\.|°"),
-
-                // Física
-                new TokenDefinition(TokenType.PALABRA_RESERVADA,
-                    @"\b(gravedad|radiacion|temperatura|velocidad|densidad|composicion)\b"),
-                // Control de flujo
-                new TokenDefinition(TokenType.PALABRA_RESERVADA,
-                    @"\b(si|sino|mientras|para|iterar|repetir|encontrar|esperar|continuar|interrumpir|romper)\b"),
-                // Lógica y tipos
-                new TokenDefinition(TokenType.PALABRA_RESERVADA,
-                    @"\b(y|o|no|verdadero|falso|nulo|entero|booleano|decimal|texto)\b"),
-                // Acciones
-                new TokenDefinition(TokenType.PALABRA_RESERVADA,
-                    @"\b(resultado|mostrar|guardar|reporte|analizar|configuracion)\b"),
-
-                // Identificadores válidos
-                new TokenDefinition(TokenType.IDENTIFICADOR, @"[a-zA-Z][a-zA-Z0-9_]*"),
-
-            };
+    // Identificadores válidos (solo letra o guión bajo al inicio)
+    new TokenDefinition(TokenType.IDENTIFICADOR, @"[a-zA-Z_][a-zA-Z0-9_]*"),
+};
         }
 
         private void AdvancePosition(char c)
