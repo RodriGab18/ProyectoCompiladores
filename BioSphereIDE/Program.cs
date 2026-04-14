@@ -75,13 +75,29 @@ namespace BioSphereIDE
 
                 // Cadenas
                 new TokenDefinition(TokenType.CADENA, "\"[^\"\r\n]*\""),
-                new TokenDefinition(TokenType.ERROR_LEXICO, "\"[^\"\r\n]*$"),
 
-                // Símbolos
-                new TokenDefinition(TokenType.SIMBOLO, @"\(|\)|\{|\}|\[|\]|;|,|\.|°|%"),
+                // Cadena sin cerrar → ERROR LÉXICO
+                new TokenDefinition(TokenType.ERROR_LEXICO, "\"[^\"\r\n]*(?=\r|\n|$)"),
 
-                // Identificadores (todo lo demás)
-                new TokenDefinition(TokenType.IDENTIFICADOR, @"[a-zA-Z_][a-zA-Z0-9_]*"),
+                // Símbolos del lenguaje
+                new TokenDefinition(TokenType.SIMBOLO, @"\(|\)|\{|\}|\[|\]|;|,|\.|°"),
+
+                // Física
+                new TokenDefinition(TokenType.PALABRA_RESERVADA,
+                    @"\b(gravedad|radiacion|temperatura|velocidad|densidad|composicion)\b"),
+                // Control de flujo
+                new TokenDefinition(TokenType.PALABRA_RESERVADA,
+                    @"\b(si|sino|mientras|para|iterar|repetir|encontrar|esperar|continuar|interrumpir|romper)\b"),
+                // Lógica y tipos
+                new TokenDefinition(TokenType.PALABRA_RESERVADA,
+                    @"\b(y|o|no|verdadero|falso|nulo|entero|booleano|decimal|texto)\b"),
+                // Acciones
+                new TokenDefinition(TokenType.PALABRA_RESERVADA,
+                    @"\b(resultado|mostrar|guardar|reporte|analizar|configuracion)\b"),
+
+                // Identificadores válidos
+                new TokenDefinition(TokenType.IDENTIFICADOR, @"[a-zA-Z][a-zA-Z0-9_]*"),
+
             };
         }
 
