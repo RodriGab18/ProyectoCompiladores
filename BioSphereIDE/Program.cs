@@ -43,7 +43,7 @@ namespace BioSphereIDE
         public ErrorType Type { get; set; }
     }
 
-    public enum ErrorType { Lexico, Estructural }
+    public enum ErrorType { Lexico, Estructural, Semantico }
 
     public class Lexer
     {
@@ -675,44 +675,68 @@ namespace BioSphereIDE
         private void CargarCodigoCorrecto()
         {
             txtCodigo.Text = @"inicio
-    simulacion {
-        planeta {
-            radio = 6371;
-            masa = 5;
-            gravedad = ( 6 * masa ) / ( radio ^ 2 ) ;
+simulacion {
+    gravedad = 0;
+    planeta {
+        masa = 5;
+        radio = 6371;
+        gravedad = (6 * masa) / (radio ^ 2);
+    }
+    atmosfera {
+        presion = 0.006;
+        co2 = 95;
+    }
+    agua {
+        estado_liquido = falso;
+    }
+    vida {
+        si (gravedad > 8 y gravedad < 12) {
+            mostrar(""Gravedad óptima para terraformación"");
+        } sino {
+            reporte(""Gravedad extrema, ajustar simulación"");
         }
-        atmosfera {
-            oxigeno = 21;
-            co2 = 5;
-        }
-        vida {
-            si ( gravedad > 8 y gravedad < 12 ) {
-                mostrar ""Gravedad optima"" ;
-            } sino {
-                reporte ""Gravedad extrema"" ;
-            }
-            mientras ( co2 > 0 ) {
-                co2 = co2 - 1 ;
-                mostrar ""Reduciendo CO2"" ;
-            }
+        mientras (co2 > 0) {
+            co2 = co2 - 1;
+            mostrar(""Reduciendo CO2"");
         }
     }
+}
 fin";
         }
 
         private void CargarCodigoConErrores()
         {
-            txtCodigo.Text = @"// ========== CÓDIGO CON ERRORES ==========
-simulacion {{
+            txtCodigo.Text = @"inicio
+simulacion {
+    // 1. ERROR LÉXICO: identificador que comienza con número
+    123planeta = 5;
+
     planeta {
-        temperatura = -60;
+        masa = 5;
+        radio = 6371;
+        // ERROR LÉXICO: símbolo no permitido
+        @$# = 10;
+    }
+
     atmosfera {
-        presion = 0.006;
-    123variable = 50;
-    @ $ #
-    si (temperatura > -50 {
-        mostrar(""Error"");
-";
+        presion = 0.006
+        co2 = 95;    // ERROR SINTÁCTICO: falta ';' después de 0.006
+    }
+
+    agua {
+        estado_liquido = falso;
+    }
+
+    vida {
+        // ERROR SEMÁNTICO: variable 'gravedad' no declarada
+        si (gravedad > 8) {
+            mostrar(""Condición correcta"");
+        }
+        // ERROR SEMÁNTICO: operador aritmético con texto
+        resultado = ""Hola"" + 5;
+    }
+}
+fin";
         }
 
         private void ChkModoPrueba_CheckedChanged(object? sender, EventArgs e)
@@ -743,6 +767,7 @@ simulacion {{
                     gridTokens.Rows[rowIndex].DefaultCellStyle.BackColor = Color.FromArgb(60, 10, 10);
             }
 
+            // Si hay errores léxicos, mostrarlos y detener (no se puede analizar sintáctica ni semánticamente)
             if (erroresLexicos.Count > 0)
             {
                 txtConsola.SelectionColor = Color.FromArgb(255, 100, 80);
@@ -754,10 +779,11 @@ simulacion {{
                 }
                 errorRenderer.UpdateErrors(erroresLexicos);
                 txtCodigo.TextArea.TextView.Redraw();
-                ultimoAST = null;
+                ultimoAST = null;   // Limpiar AST porque hay errores
                 return;
             }
 
+            // Análisis sintáctico
             txtConsola.AppendText("🔍 Análisis sintáctico...\n");
             var parser = new Parser(tokens);
             var (programa, erroresSintacticos) = parser.ParsePrograma();
@@ -774,19 +800,42 @@ simulacion {{
                 errorRenderer.UpdateErrors(erroresSintacticos);
                 txtCodigo.TextArea.TextView.Redraw();
                 ultimoAST = null;
+                return;
             }
-            else
+
+            // Sin errores sintácticos: guardar AST y pasar al análisis semántico
+            ultimoAST = programa;
+
+            txtConsola.AppendText("\n🔍 Iniciando análisis semántico...\n");
+            var semantic = new SemanticAnalyzer();
+            var (semSuccess, semanticErrors) = semantic.Analyze(programa!);
+
+            if (!semSuccess)
             {
-                ultimoAST = programa;
-                txtConsola.SelectionColor = ColCaribbean;
-                txtConsola.AppendText("✅ ANÁLISIS SINTÁCTICO COMPLETADO SIN ERRORES\n\n");
-                txtConsola.SelectionColor = ColMeadow;
-                txtConsola.AppendText("📖 ÁRBOL SINTÁCTICO (texto):\n\n");
-                txtConsola.SelectionColor = ColAntiFlash;
-                txtConsola.AppendText(programa!.ToTreeString("", true));
-                errorRenderer.UpdateErrors(new List<ErrorInfo>());
+                txtConsola.SelectionColor = Color.FromArgb(255, 100, 80);
+                txtConsola.AppendText($"❌ ANÁLISIS SEMÁNTICO CON {semanticErrors.Count} ERRORES\n\n");
+                foreach (var err in semanticErrors)
+                {
+                    txtConsola.SelectionColor = Color.FromArgb(255, 140, 100);
+                    txtConsola.AppendText($"  • {err.Message}\n");
+                }
+                // Subrayar errores semánticos en el editor
+                errorRenderer.UpdateErrors(semanticErrors);
                 txtCodigo.TextArea.TextView.Redraw();
+                return; // No mostrar el árbol sintáctico porque el programa es semánticamente inválido
             }
+
+            // Éxito total: sin errores léxicos, sintácticos ni semánticos
+            txtConsola.SelectionColor = ColCaribbean;   // Color definido en tu paleta
+            txtConsola.AppendText("✅ ANÁLISIS SEMÁNTICO COMPLETADO SIN ERRORES\n\n");
+            txtConsola.SelectionColor = ColMeadow;
+            txtConsola.AppendText("📖 ÁRBOL SINTÁCTICO (texto):\n\n");
+            txtConsola.SelectionColor = ColAntiFlash;
+            txtConsola.AppendText(programa!.ToTreeString("", true));
+
+            // Limpiar subrayados y refrescar
+            errorRenderer.UpdateErrors(new List<ErrorInfo>());
+            txtCodigo.TextArea.TextView.Redraw();
         }
 
         private void BtnArboles_Click(object? sender, EventArgs e)

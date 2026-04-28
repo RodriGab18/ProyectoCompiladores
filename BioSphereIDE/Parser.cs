@@ -466,15 +466,23 @@ namespace BioSphereIDE
             _funcionesDefinidas.Clear();
             SkipComments();
 
-            if (Peek(TokenType.PALABRA_RESERVADA, "inicio"))
-                Eat(TokenType.PALABRA_RESERVADA, "inicio");
+            // Obligatorio: "inicio"
+            if (!Eat(TokenType.PALABRA_RESERVADA, "inicio"))
+            {
+                AddError("Se esperaba 'inicio' al comienzo del programa.", Current);
+                return (null, _errores);
+            }
 
             var bloqueSimulacion = ParseBloqueSimulacion();
             if (bloqueSimulacion == null)
                 return (null, _errores);
 
-            if (Peek(TokenType.PALABRA_RESERVADA, "fin"))
-                Eat(TokenType.PALABRA_RESERVADA, "fin");
+            // Obligatorio: "fin"
+            if (!Eat(TokenType.PALABRA_RESERVADA, "fin"))
+            {
+                AddError("Se esperaba 'fin' al final del programa.", Current);
+                return (null, _errores);
+            }
 
             if (_errores.Count > 0)
                 return (null, _errores);
@@ -681,7 +689,17 @@ namespace BioSphereIDE
         private NodoReporte? ParseReporte()
         {
             if (!Eat(TokenType.PALABRA_RESERVADA, "reporte")) return null;
-            var valor = ParseValor();
+            NodoValor? valor;
+            if (Peek(TokenType.SIMBOLO, "("))
+            {
+                Eat(TokenType.SIMBOLO, "(");
+                valor = ParseValor();
+                Eat(TokenType.SIMBOLO, ")");
+            }
+            else
+            {
+                valor = ParseValor();
+            }
             if (valor == null) return null;
             Eat(TokenType.SIMBOLO, ";");
             return new NodoReporte { Valor = valor };
