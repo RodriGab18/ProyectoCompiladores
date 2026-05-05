@@ -1,18 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BioSphereIDE.Core;
 
-namespace BioSphereIDE
+namespace BioSphereIDE.Analizadores
 {
-          // Extensión del tipo de error (ya debe estar definido en Program.cs)
-          // Si no está, descomenta la línea siguiente y comenta la otra.
-          // public enum ErrorType { Lexico, Estructural, Semantico }
-
-          // Clase para representar un símbolo en la tabla
           public class Symbol
           {
                     public string Nombre { get; set; }
-                    public string Tipo { get; set; }      // "numero", "texto", "booleano", "lista", "nulo"
+                    public string Tipo { get; set; }      // "numero", "texto", "booleano", "lista", "nulo", "funcion"
                     public object Valor { get; set; }
                     public string Unidad { get; set; }     // opcional: "km", "kg", etc.
                     public int Linea { get; set; }         // línea donde se creó/declaró
@@ -157,7 +153,6 @@ namespace BioSphereIDE
                               if (!hasPlaneta) AddError("SEM-040", "Bloque 'planeta' obligatorio faltante.", null);
                               if (!hasAtmosfera) AddError("SEM-040", "Bloque 'atmosfera' obligatorio faltante.", null);
                               if (!hasAgua) AddError("SEM-040", "Bloque 'agua' obligatorio faltante.", null);
-                              // 'vida' no es obligatorio según el ejemplo
                     }
 
                     private void VisitBloquePlaneta(NodoBloquePlaneta node)
@@ -214,26 +209,39 @@ namespace BioSphereIDE
                     {
                               foreach (var stmt in node.Sentencias)
                                         VisitSentencia(stmt);
-                              // No hay variables obligatorias específicas
                     }
 
                     private void VisitDefinicionFuncion(NodoDefinicionFuncion node)
                     {
+                              // NUEVO: 1. Registrar la firma de la función en el Scope Padre
+                              var funcSym = new Symbol
+                              {
+                                        Nombre = $"func_{node.Nombre}",
+                                        Tipo = "funcion",
+                                        Valor = node.Parametros.Count, // Guardar la cantidad de parámetros previstos
+                                        Unidad = null,
+                                        Linea = 1, // En un rediseño, extraer esto del token del Parser
+                                        Ambito = symbolTable.CurrentScopeName
+                              };
+                              try { symbolTable.AddSymbol(funcSym); } catch { }
+
+                              // 2. Entrar al Scope hijo y cargar variables
                               symbolTable.PushScope($"funcion {node.Nombre}");
                               foreach (var param in node.Parametros)
                               {
                                         var paramSym = new Symbol
                                         {
                                                   Nombre = param,
-                                                  Tipo = "numero",
+                                                  Tipo = "numero", // En ASTRA por defecto asumimos números en funciones algebraicas
                                                   Valor = null,
-                                                  Linea = node.Sentencias.Any() ? node.Sentencias.First().GetHashCode() : 0, // línea aproximada
+                                                  Linea = 1,
                                                   Ambito = symbolTable.CurrentScopeName
                                         };
                                         try { symbolTable.AddSymbol(paramSym); } catch { }
                               }
                               foreach (var stmt in node.Sentencias)
                                         VisitSentencia(stmt);
+
                               symbolTable.PopScope();
                     }
 
@@ -258,34 +266,24 @@ namespace BioSphereIDE
 
                     private void VisitAsignacion(NodoAsignacion node)
                     {
-                              // Evaluar el valor derecho para obtener su tipo, valor y unidad
                               var (tipo, valor, unidad) = VisitValor(node.Valor, null);
-
-                              // Buscar símbolo en la tabla (búsqueda ascendente)
                               var (existingSym, scopeLevel) = symbolTable.LookUp(node.Identificador);
 
                               if (existingSym == null)
                               {
-                                        // Declaración implícita: crear nuevo símbolo en el ámbito actual
                                         var newSym = new Symbol
                                         {
                                                   Nombre = node.Identificador,
                                                   Tipo = tipo,
                                                   Valor = valor,
                                                   Unidad = unidad,
-                                                  Linea = node.Identificador?.Length ?? 1, // mejor usar el token real, pero no tenemos acceso; usamos algo
+                                                  Linea = 1, // NUEVO: Evitamos usar "node.Identificador?.Length" como línea
                                                   Ambito = symbolTable.CurrentScopeName
                                         };
-                                        // Intentar obtener la línea real desde el token del identificador (node.Identificador es string, no Token)
-                                        // NOTA: node.Identificador no tiene línea. Para obtener la línea, necesitaríamos modificar NodoAsignacion para guardar el Token.
-                                        // Como solución temporal, asignamos la línea del nodo (no disponible). Se puede mejorar.
-                                        // Por ahora, dejamos un valor por defecto. En una implementación real, guarda el Token en NodoAsignacion.
                                         symbolTable.AddSymbol(newSym);
                               }
                               else
                               {
-                                        // Actualizar variable existente
-                                        // Verificar compatibilidad de tipos (opcional)
                                         if (existingSym.Tipo != tipo && !(existingSym.Tipo == "numero" && tipo == "numero"))
                                         {
                                                   AddError("SEM-014", $"Incompatibilidad de tipos en asignación. '{node.Identificador}' es {existingSym.Tipo} pero se asigna {tipo}.", null, existingSym.Linea);
@@ -300,35 +298,24 @@ namespace BioSphereIDE
                     {
                               switch (valor)
                               {
-                                        case NodoExprNumero num:
-                                                  return ("numero", num.Valor, null);
+                                        case NodoExprNumero num: return ("numero", num.Valor, null);
                                         case NodoExprIdentificador id:
                                                   var (sym, _) = symbolTable.LookUp(id.Nombre);
-                                                  if (sym == null)
-                                                            AddError("SEM-001", $"Variable '{id.Nombre}' no inicializada.", tokenContext);
+                                                  if (sym == null) AddError("SEM-001", $"Variable '{id.Nombre}' no inicializada.", tokenContext);
                                                   return (sym?.Tipo ?? "nulo", sym?.Valor, sym?.Unidad);
-                                        case NodoTexto txt:
-                                                  return ("texto", txt.Texto, null);
-                                        case NodoBooleano boo:
-                                                  return ("booleano", boo.Valor, null);
-                                        case NodoNulo:
-                                                  return ("nulo", null, null);
-                                        case NodoLista list:
-                                                  return ("lista", list.Valores, null);
-                                        case NodoExprBinaria bin:
-                                                  return VisitExprBinaria(bin, tokenContext);
-                                        case NodoExprPotencia pot:
-                                                  return VisitExprPotencia(pot, tokenContext);
-                                        case NodoExprParentesis par:
-                                                  return VisitValor(par.Expr, tokenContext);
-                                        case NodoLlamadaFuncion call:
-                                                  return VisitLlamadaFuncion(call, tokenContext);
+                                        case NodoTexto txt: return ("texto", txt.Texto, null);
+                                        case NodoBooleano boo: return ("booleano", boo.Valor, null);
+                                        case NodoNulo _: return ("nulo", null, null);
+                                        case NodoLista list: return ("lista", list.Valores, null);
+                                        case NodoExprBinaria bin: return VisitExprBinaria(bin, tokenContext);
+                                        case NodoExprPotencia pot: return VisitExprPotencia(pot, tokenContext);
+                                        case NodoExprParentesis par: return VisitValor(par.Expr, tokenContext);
+                                        case NodoLlamadaFuncion call: return VisitLlamadaFuncion(call, tokenContext);
                                         case NodoCantidad cant:
                                                   var (tExpr, vExpr, uExpr) = VisitValor(cant.Expr, tokenContext);
                                                   string unidadFinal = cant.Unidad ?? uExpr;
                                                   return (tExpr, vExpr, unidadFinal);
-                                        default:
-                                                  return ("nulo", null, null);
+                                        default: return ("nulo", null, null);
                               }
                     }
 
@@ -360,7 +347,6 @@ namespace BioSphereIDE
                               }
                               else if (op == "==" || op == "!=")
                               {
-                                        // cualquier tipo
                                         return ("booleano", null, null);
                               }
                               else
@@ -394,22 +380,30 @@ namespace BioSphereIDE
                     private (string tipo, object valor, string unidad) VisitCondicion(NodoCondicion cond, Token? tokenContext)
                     {
                               var (tipoIzq, _, _) = VisitValor(cond.Izquierda, tokenContext);
+
                               if (!string.IsNullOrEmpty(cond.Operador))
                               {
                                         var (tipoDer, _, _) = VisitValor(cond.Derecha, tokenContext);
-                                        if (cond.Operador == "==" || cond.Operador == "!=")
-                                        {
-                                                  return ("booleano", null, null);
-                                        }
-                                        else if (cond.Operador == "<" || cond.Operador == ">" || cond.Operador == "<=" || cond.Operador == ">=")
+                                        if (cond.Operador == "<" || cond.Operador == ">" || cond.Operador == "<=" || cond.Operador == ">=")
                                         {
                                                   if (tipoIzq != "numero" || tipoDer != "numero")
                                                             AddError("SEM-011", $"Operador '{cond.Operador}' requiere tipos numéricos.", tokenContext);
-                                                  return ("booleano", null, null);
                                         }
                               }
-                              // Si no hay operador, el valor mismo decide el tipo
-                              return (tipoIzq, null, null);
+
+                              // NUEVO: Validar anidaciones lógicas (ej: "X > 2 Y Z < 4")
+                              foreach (var (opLogico, subCond) in cond.OperadoresLogicos)
+                              {
+                                        var (tipoSub, _, _) = VisitCondicion(subCond, tokenContext);
+                                        if (tipoSub != "booleano" && tipoSub != "numero") // En ASTRA numérico se usa en condicionales
+                                                  AddError("SEM-021", $"Operador lógico '{opLogico}' requiere evaluaciones válidas.", tokenContext);
+                              }
+
+                              // Si es un valor único (ej. "si (verdadero)") retorna su tipo natural, sino, retorna booleano
+                              if (string.IsNullOrEmpty(cond.Operador) && cond.OperadoresLogicos.Count == 0)
+                                        return (tipoIzq, null, null);
+
+                              return ("booleano", null, null);
                     }
 
                     private void VisitMostrar(NodoMostrar node)
@@ -426,7 +420,8 @@ namespace BioSphereIDE
                     {
                               var (tipoCond, _, _) = VisitCondicion(node.Condicion, null);
                               if (tipoCond != "booleano")
-                                        AddError("SEM-020", $"Condición debe ser Booleana, no '{tipoCond}'.", null);
+                                        AddError("SEM-020", $"Condición debe resultar Booleana, no '{tipoCond}'.", null);
+
                               symbolTable.PushScope("if");
                               foreach (var stmt in node.ThenSentencias)
                                         VisitSentencia(stmt);
@@ -445,7 +440,8 @@ namespace BioSphereIDE
                     {
                               var (tipoCond, _, _) = VisitCondicion(node.Condicion, null);
                               if (tipoCond != "booleano")
-                                        AddError("SEM-020", $"Condición debe ser Booleana, no '{tipoCond}'.", null);
+                                        AddError("SEM-020", $"Condición debe resultar Booleana, no '{tipoCond}'.", null);
+
                               symbolTable.PushScope("while");
                               foreach (var stmt in node.Sentencias)
                                         VisitSentencia(stmt);
