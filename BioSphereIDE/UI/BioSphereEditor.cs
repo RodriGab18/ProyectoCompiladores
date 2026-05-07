@@ -70,11 +70,234 @@ namespace BioSphereIDE.UI
                               return page;
                     }
 
-                    private string GetInfoGeneral() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}} \b Introduccion a ASTRA \b0\par Este lenguaje permite simular biosferas... }";
-                    private string GetSintaxisBasica() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}} \b Sintaxis \b0\par Todo inicia con 'inicio' y termina con 'fin'... }";
-                    private string GetPalabrasReservadas() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}} \b Palabras Reservadas \b0\par simulacion, planeta, atmosfera, agua, vida... }";
-                    private string GetEjemplos() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Consolas;}{\f1\fnil\fcharset0 Segoe UI;}} \b Ejemplo de codigo \b0\par inicio \par simulacion { \par planeta { masa = 5; } \par } \par fin }";
-          }
+        private string GetInfoGeneral() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
+\b\fs24 ASTRA – Lenguaje para Simulación de Biosferas\b0\fs20\par
+\par
+\b ¿Qué es ASTRA?\b0\par
+ASTRA (Astronomical Simulation & Terrain Research Algorithm) es un lenguaje de dominio específico (DSL) diseñado para modelar y simular biosferas virtuales. Permite definir planetas, atmósferas, cuerpos de agua y formas de vida, así como establecer reglas de evolución, cálculos y reportes.\par
+\par
+\b Propósito del compilador\b0\par
+El compilador de ASTRA (implementado en C#) realiza cinco fases:\par
+\tab • \b Análisis léxico\b0: reconoce palabras reservadas, identificadores, números, operadores, cadenas, símbolos y detecta errores (caracteres ilegales, números pegados a letras, cadenas sin cerrar).\par
+\tab • \b Análisis sintáctico\b0: construye un árbol sintáctico (AST) según la gramática del lenguaje y valida la estructura (llaves balanceadas, presencia de ''inicio'' y ''fin'', etc.).\par
+\tab • \b Análisis semántico\b0: verifica reglas de tipo, declara variables, comprueba unidades físicas, exige variables obligatorias (masa, radio, presion, co2, estado_liquido), detecta uso de variables no definidas y operaciones inválidas.\par
+\tab • \b Tabla de símbolos\b0: almacena nombre, tipo, valor, unidad, línea y ámbito de cada variable y función.\par
+\tab • \b Generación / ejecución\b0: interpreta el AST y muestra resultados en consola.\par
+\par
+\b Ejemplo mínimo funcional\b0\par
+\f1\fs18 inicio\par
+    simulacion {\par
+        planeta {\par
+            masa = 5.97e24 kg;\par
+            radio = 6371 km;\par
+        }\par
+        atmosfera {\par
+            presion = 1 atm;\par
+            co2 = 400 ppm;\par
+        }\par
+        agua {\par
+            estado_liquido = verdadero;\par
+        }\par
+        vida {\par
+            // reglas de vida aquí\par
+        }\par
+    }\par
+fin\f0\fs20\par
+\par
+Con ASTRA puedes simular desde un ecosistema simple hasta biosferas complejas con funciones definidas por el usuario, condicionales y bucles.\par
+}";
+
+        private string GetSintaxisBasica() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
+\b\fs24 Sintaxis Básica de ASTRA\b0\fs20\par
+\par
+\b 1. Estructura general\b0\par
+\f1 inicio\par
+    simulacion {\par
+        // Bloques obligatorios\par
+        planeta { ... }\par
+        atmosfera { ... }\par
+        agua { ... }\par
+        vida { ... }\par
+        // También pueden haber funciones y sentencias globales\par
+    }\par
+fin\f0\par
+\par
+\b 2. Bloques obligatorios y variables requeridas\b0\par
+\f1\tab • planeta\f0: \f1 masa\f0 (numérico, unidad ej. kg) y \f1 radio\f0 (numérico, km).\par
+\f1\tab • atmosfera\f0: \f1 presion\f0 (numérico, atm) y \f1 co2\f0 (numérico, ppm).\par
+\f1\tab • agua\f0: \f1 estado_liquido\f0 (booleano: verdadero/falso).\par
+\f1\tab • vida\f0: sin variables obligatorias.\par
+\par
+\b 3. Tipos de datos\b0\par
+\tab • \b Números\b0: enteros o decimales (42, 3.1416, 5.97e24).\par
+\tab • \b Textos\b0: entre comillas dobles (""Hola mundo"").\par
+\tab • \b Booleanos\b0: \f1 verdadero\f0, \f1 falso\f0.\par
+\tab • \b Listas\b0: [1, 2, 3], [""a"", ""b""].\par
+\tab • \b Nulo\b0: \f1 nulo\f0.\par
+\par
+\b 4. Operadores\b0\par
+\tab • Aritméticos: \f1 +   -   *   /   ^\f0 (potencia).\par
+\tab • Comparación: \f1 ==   !=   <   >   <=   >=\f0.\par
+\tab • Lógicos: \f1 y   o\f0.\par
+\par
+\b 5. Unidades físicas (opcionales)\b0\par
+Se pueden añadir a números: \f1 km, m, g, kg, atm, ppm, Sv, %, °C, h, s\f0.\par
+Ejemplo: \f1 temperatura = 25 °C;\f0\par
+\par
+\b 6. Sentencias de control\b0\par
+\tab • \b Asignación\b0: \f1 identificador = valor;\f0\par
+\tab • \b Condicional\b0:\par
+\f1\tab     si (condicion) {\par
+\tab         ...\par
+\tab     } sino {\par
+\tab         ...\par
+\tab     }\f0\par
+\tab • \b Bucle mientras\b0:\par
+\f1\tab     mientras (condicion) {\par
+\tab         ...\par
+\tab     }\f0\par
+\tab • \b Mostrar\b0 (salida): \f1 mostrar(expresion);\f0 o \f1 mostrar expresion;\f0\par
+\tab • \b Reporte\b0 (estadística): \f1 reporte(expresion);\f0\par
+\tab • \b Definición de función\b0:\par
+\f1\tab     funcion nombre(param1, param2) {\par
+\tab         ...\par
+\tab     }\f0\par
+\tab • \b Llamada a función\b0: \f1 nombre(argumento1, argumento2);\f0\par
+\par
+\b 7. Comentarios\b0\par
+\f1 // comentario de línea\par
+/* comentario\par
+   de bloque */\f0\par
+}";
+
+        private string GetPalabrasReservadas() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
+\b\fs24 Palabras Reservadas de ASTRA\b0\fs20\par
+\par
+Estas palabras tienen un significado especial y \b no pueden usarse como identificadores\b0 (variables o funciones).\par
+\par
+\b Lista completa (según el analizador léxico)\b0\par
+\f1\fs18
+\b • Estructura de programa:\b0   inicio, fin, simulacion\par
+\b • Bloques temáticos:\b0        planeta, atmosfera, agua, vida\par
+\b • Control de flujo:\b0          si, sino, mientras, iterar, continuar, romper\par
+\b • Salida:\b0                    mostrar, reporte\par
+\b • Valores lógicos y nulo:\b0    verdadero, falso, nulo\par
+\b • Operadores lógicos:\b0        y, o\par
+\b • Funciones:\b0                 funcion\f0\fs20\par
+\par
+\b ⚠️ Notas importantes\b0\par
+\tab • Todas las palabras reservadas deben escribirse en \b minúsculas\b0. Ejemplo: \f1 simulacion\f0 (válido), \f1 Simulacion\f0 (no reconocido).\par
+\tab • No se pueden usar como identificadores:\par
+\f1\tab     planeta = 5;\f0   \b ❌\b0\par
+\f1\tab     miPlaneta = 5;\f0 \b ✅\b0\par
+\par
+\b Ejemplo de uso correcto\b0\par
+\f1\fs18 inicio\par
+    simulacion {\par
+        planeta { masa = 1000 kg; }\par
+    }\par
+fin\f0\fs20\par
+\par
+\b Ejemplo de error léxico por mayúsculas\b0\par
+\f1\fs18 Inicio\par
+    Simulacion {\par
+        Planeta { masa = 1000 kg; }  /* Error: 'Planeta' no es palabra reservada */\par
+    }\par
+Fin\f0\fs20\par
+\par
+El analizador léxico trataría \f1 Inicio\f0, \f1 Simulacion\f0, \f1 Planeta\f0 y \f1 Fin\f0 como identificadores normales, lo que provocaría errores sintácticos porque se esperaban las palabras reservadas en minúsculas.\par
+}";
+
+        private string GetEjemplos() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
+\b\fs24 Ejemplos Completos en ASTRA\b0\fs20\par
+\par
+\b Ejemplo 1: Simulación básica con condicional\b0\par
+\f1\fs18 inicio\par
+    simulacion {\par
+        planeta {\par
+            masa = 1000 kg;\par
+            radio = 100 km;\par
+        }\par
+        atmosfera {\par
+            presion = 0.5 atm;\par
+            co2 = 800 ppm;\par
+        }\par
+        agua {\par
+            estado_liquido = falso;\par
+        }\par
+        vida {\par
+            temperatura = 30;\par
+            si (temperatura > 25) {\par
+                mostrar(""Alerta: temperatura alta"");\par
+            }\par
+            reporte(""Condiciones extremas"");\par
+        }\par
+    }\par
+fin\f0\fs20\par
+\par
+\b Ejemplo 2: Uso de bucle y función definida por usuario\b0\par
+\f1\fs18 inicio\par
+    simulacion {\par
+        planeta { masa = 1.0 kg; radio = 1.0 km; }\par
+        atmosfera { presion = 1.0 atm; co2 = 300 ppm; }\par
+        agua { estado_liquido = verdadero; }\par
+        vida {\par
+            funcion cuadrado(x) {\par
+                retorno = x * x;\par
+            }\par
+            contador = 0;\par
+            mientras (contador < 5) {\par
+                mostrar(cuadrado(contador));\par
+                contador = contador + 1;\par
+            }\par
+        }\par
+    }\par
+fin\f0\fs20\par
+\par
+\b Ejemplo 3: Listas y operaciones con unidades\b0\par
+\f1\fs18 inicio\par
+    simulacion {\par
+        planeta { masa = 5.97e24 kg; radio = 6371 km; }\par
+        atmosfera { presion = 1.0 atm; co2 = 400 ppm; }\par
+        agua { estado_liquido = verdadero; }\par
+        vida {\par
+            temperaturas = [15, 20, 25] °C;\par
+            promedio = (temperaturas[0] + temperaturas[1] + temperaturas[2]) / 3;\par
+            mostrar(""Promedio: "", promedio, ""°C"");\par
+            si (promedio > 20) {\par
+                reporte(""Clima cálido"");\par
+            }\par
+        }\par
+    }\par
+fin\f0\fs20\par
+\par
+\b Ejemplo 4: Errores semánticos (para probar el analizador)\b0\par
+\f1\fs18 inicio\par
+    simulacion {\par
+        planeta {\par
+            masa = 10 kg;\par
+            // Falta 'radio' → error SEM-041\par
+        }\par
+        atmosfera {\par
+            presion = 1 atm;\par
+            // Falta 'co2' → error SEM-041\par
+        }\par
+        agua {\par
+            estado_liquido = 42;   // error: debe ser booleano\par
+        }\par
+        vida {\par
+            x = y + 2;   // error: 'y' no declarada (SEM-001)\par
+        }\par
+    }\par
+fin\f0\fs20\par
+\par
+\b ¿Cómo probarlos?\b0\par
+1. Copia cualquiera de los ejemplos en el editor.\par
+2. Haz clic en \b Compilar\b0.\par
+3. Revisa la ventana de \b tokens\b0, \b consola de salida\b0 y los errores (si los hay).\par
+4. Si todo es correcto, se mostrará el árbol sintáctico y la tabla de símbolos.\par
+}";
+    }
 
           // ==================================================================================
           // EDITOR PRINCIPAL CON NUEVA INTERFAZ GRÁFICA (Properly Studio)
