@@ -70,7 +70,6 @@ namespace BioSphereIDE.UI
             return page;
         }
 
-<<<<<<< Updated upstream
         private string GetInfoGeneral() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
 \b\fs24 ASTRA – Lenguaje para Simulación de Biosferas\b0\fs20\par
 \par
@@ -180,10 +179,10 @@ Estas palabras tienen un significado especial y \b no pueden usarse como identif
 \f1\fs18
 \b • Estructura de programa:\b0   inicio, fin, simulacion\par
 \b • Bloques temáticos:\b0        planeta, atmosfera, agua, vida\par
-\b • Control de flujo:\b0          si, sino, mientras, iterar, continuar, romper\par
+\b • Control de flujo:\b0         si, sino, mientras, iterar, continuar, romper\par
 \b • Salida:\b0                    mostrar, reporte\par
-\b • Valores lógicos y nulo:\b0    verdadero, falso, nulo\par
-\b • Operadores lógicos:\b0        y, o\par
+\b • Valores lógicos y nulo:\b0   verdadero, falso, nulo\par
+\b • Operadores lógicos:\b0       y, o\par
 \b • Funciones:\b0                 funcion\f0\fs20\par
 \par
 \b ⚠️ Notas importantes\b0\par
@@ -298,12 +297,6 @@ fin\f0\fs20\par
 3. Revisa la ventana de \b tokens\b0, \b consola de salida\b0 y los errores (si los hay).\par
 4. Si todo es correcto, se mostrará el árbol sintáctico y la tabla de símbolos.\par
 }";
-=======
-        private string GetInfoGeneral() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}} \b Introduccion a ASTRA \b0\par Este lenguaje permite simular biosferas... }";
-        private string GetSintaxisBasica() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}} \b Sintaxis \b0\par Todo inicia con 'inicio' y termina con 'fin'... }";
-        private string GetPalabrasReservadas() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}} \b Palabras Reservadas \b0\par simulacion, planeta, atmosfera, agua, vida... }";
-        private string GetEjemplos() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Consolas;}{\f1\fnil\fcharset0 Segoe UI;}} \b Ejemplo de codigo \b0\par inicio \par simulacion { \par planeta { masa = 5; } \par } \par fin }";
->>>>>>> Stashed changes
     }
 
     // ==================================================================================
