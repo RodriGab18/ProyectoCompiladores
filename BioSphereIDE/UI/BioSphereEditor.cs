@@ -315,7 +315,6 @@ fin\f0\fs20\par
 
         private DataGridView gridTokens;
         private RichTextBox txtConsola;
-        private Button btnCompilar;
         private Button btnDocumentacion;
         private Button btnArboles;
         private CheckBox chkModoPrueba;
@@ -371,25 +370,29 @@ fin\f0\fs20\par
             var lblTitle = new Label
             {
                 Text = "ASTRA",
-                Font = new Font("Segoe UI", 22, FontStyle.Bold),
+                Font = new Font("Segoe UI", 18, FontStyle.Bold),
                 ForeColor = ColCaribbean,
-                Location = new Point(18, 12),
-                AutoSize = true
+                Location = new Point(14, 10),
+                Size = new Size(135, 44),
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleLeft
             };
             topPanel.Controls.Add(lblTitle);
 
             var lblSub = new Label
             {
                 Text = "IDE",
-                Font = new Font("Segoe UI", 9, FontStyle.Regular),
+                Font = new Font("Segoe UI", 8, FontStyle.Regular),
                 ForeColor = ColPistachio,
-                Location = new Point(100, 30),
-                AutoSize = true
+                Location = new Point(116, 26),
+                Size = new Size(32, 18),
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleLeft
             };
             topPanel.Controls.Add(lblSub);
 
             // Separador
-            var sep = new Panel { Location = new Point(148, 14), Size = new Size(2, 36), BackColor = ColBangladesh };
+            var sep = new Panel { Location = new Point(152, 14), Size = new Size(2, 36), BackColor = ColBangladesh };
             topPanel.Controls.Add(sep);
 
             // Helper para botones de toolbar
@@ -415,22 +418,20 @@ fin\f0\fs20\par
                 return btn;
             }
 
-            btnCompilar = CrearBotonToolbar("▶", "Analizar (léxico + sintáctico + semántico)", 162);
-            btnArboles = CrearBotonToolbar("🌳", "Ver árbol sintáctico (AST)", 210);
-            btnDocumentacion = CrearBotonToolbar("📖", "Documentación del lenguaje", 258);
+            btnArboles = CrearBotonToolbar("🌳", "Ver árbol sintáctico (AST)", 162);
+            btnDocumentacion = CrearBotonToolbar("📖", "Documentación del lenguaje", 210);
 
             chkModoPrueba = new CheckBox
             {
                 Text = "  Modo Prueba",
                 ForeColor = ColPistachio,
                 Font = new Font("Segoe UI", 10),
-                Location = new Point(320, 20),
+                Location = new Point(268, 20),
                 AutoSize = true,
                 Checked = false
             };
             topPanel.Controls.Add(chkModoPrueba);
 
-            btnCompilar.Click += BtnCompilar_Click;
             btnArboles.Click += BtnArboles_Click;
             btnDocumentacion.Click += BtnDocumentacion_Click;
             chkModoPrueba.CheckedChanged += ChkModoPrueba_CheckedChanged;
@@ -529,7 +530,7 @@ fin\f0\fs20\par
             errorRenderer = new ErrorSquiggleRenderer(txtCodigo);
             txtCodigo.TextArea.TextView.BackgroundRenderers.Add(errorRenderer);
 
-            parseTimer = new System.Windows.Forms.Timer { Interval = 200 };
+            parseTimer = new System.Windows.Forms.Timer { Interval = 600 };
             parseTimer.Tick += ParseTimer_Tick;
             txtCodigo.TextChanged += (s, e) => { parseTimer.Stop(); parseTimer.Start(); };
 
@@ -664,14 +665,12 @@ fin\f0\fs20\par
             mainSplit.Panel1.Controls.Add(leftPanel);
             mainSplit.Panel2.Controls.Add(rightSplitTop);
 
-            // El orden de Add() y BringToFront() es fundamental para Windows Forms Z-Order
-            this.Controls.Add(mainSplit); // Ocupa el centro (Dock Fill)
-            this.Controls.Add(topPanel);  // Ocupa la parte superior (Dock Top)
-            this.Controls.Add(statusPanel); // Ocupa la parte inferior (Dock Bottom)
-
-            topPanel.BringToFront();
-            statusPanel.BringToFront();
-            mainSplit.SendToBack();
+            // Orden correcto para Dock en WinForms: Top/Bottom primero, Fill SIEMPRE último.
+            // Así el layout engine ya tiene reservado el espacio de top/bottom
+            // antes de que el control Fill reclame el resto.
+            this.Controls.Add(topPanel);    // Dock Top  — primero
+            this.Controls.Add(statusPanel); // Dock Bottom — segundo
+            this.Controls.Add(mainSplit);   // Dock Fill  — ÚLTIMO (siempre)
 
             CargarCodigoCorrecto();
 
@@ -696,12 +695,103 @@ fin\f0\fs20\par
             parseTimer.Stop();
             try
             {
+                // ── FASE 1: Léxico ──────────────────────────────────────────
                 Lexer lexer = new Lexer(txtCodigo.Text);
                 var tokens = lexer.Tokenize();
-                currentErrors = lexer.Errores ?? new List<ErrorInfo>();
+                var erroresLexicos = lexer.Errores ?? new List<ErrorInfo>();
+
                 syntaxColorizer.UpdateTokens(tokens);
+
+                // Actualizar tabla de tokens
+                gridTokens.Rows.Clear();
+                foreach (var token in tokens)
+                {
+                    string tokenName = token.Type.ToString().Replace("_", " ");
+                    int rowIndex = gridTokens.Rows.Add(tokenName, token.Lexeme, token.Line, token.Column);
+                    if (token.Type == TokenType.ERROR_LEXICO)
+                        gridTokens.Rows[rowIndex].DefaultCellStyle.BackColor = Color.FromArgb(60, 10, 10);
+                }
+
+                txtConsola.Clear();
+
+                if (erroresLexicos.Count > 0)
+                {
+                    currentErrors = erroresLexicos;
+                    errorRenderer.UpdateErrors(currentErrors);
+                    txtCodigo.TextArea.TextView.Redraw();
+                    ultimoAST = null;
+
+                    txtConsola.SelectionColor = Color.FromArgb(255, 100, 80);
+                    txtConsola.AppendText($"❌ {erroresLexicos.Count} error(es) léxico(s)\n\n");
+                    foreach (var err in erroresLexicos)
+                    {
+                        txtConsola.SelectionColor = Color.FromArgb(255, 140, 100);
+                        txtConsola.AppendText($"  • Línea {err.Line}, Col {err.Column}: {err.Message}\n");
+                    }
+                    return;
+                }
+
+                // ── FASE 2: Sintáctico ──────────────────────────────────────
+                var parser = new Parser(tokens);
+                var (programa, erroresSintacticos) = parser.ParsePrograma();
+
+                if (erroresSintacticos.Count > 0)
+                {
+                    currentErrors = erroresSintacticos;
+                    errorRenderer.UpdateErrors(currentErrors);
+                    txtCodigo.TextArea.TextView.Redraw();
+                    ultimoAST = null;
+
+                    txtConsola.SelectionColor = Color.FromArgb(255, 100, 80);
+                    txtConsola.AppendText($"❌ {erroresSintacticos.Count} error(es) sintáctico(s)\n\n");
+                    foreach (var err in erroresSintacticos)
+                    {
+                        txtConsola.SelectionColor = Color.FromArgb(255, 140, 100);
+                        txtConsola.AppendText($"  • Línea {err.Line}, Col {err.Column}: {err.Message}\n");
+                    }
+                    return;
+                }
+
+                ultimoAST = programa;
+
+                // ── FASE 3: Semántico ───────────────────────────────────────
+                var semantic = new SemanticAnalyzer();
+                var (semSuccess, semanticErrors) = semantic.Analyze(programa!);
+
+                if (!semSuccess)
+                {
+                    currentErrors = semanticErrors;
+                    errorRenderer.UpdateErrors(currentErrors);
+                    txtCodigo.TextArea.TextView.Redraw();
+
+                    txtConsola.SelectionColor = Color.FromArgb(255, 100, 80);
+                    txtConsola.AppendText($"❌ {semanticErrors.Count} error(es) semántico(s)\n\n");
+                    foreach (var err in semanticErrors)
+                    {
+                        txtConsola.SelectionColor = Color.FromArgb(255, 140, 100);
+                        txtConsola.AppendText($"  • Línea {err.Line}, Col {err.Column}: {err.Message}\n");
+                    }
+                    return;
+                }
+
+                // ── TODO CORRECTO ───────────────────────────────────────────
+                currentErrors = new List<ErrorInfo>();
                 errorRenderer.UpdateErrors(currentErrors);
                 txtCodigo.TextArea.TextView.Redraw();
+
+                txtConsola.SelectionColor = ColMeadow;
+                txtConsola.AppendText("══════════════════════════════════════\n");
+                txtConsola.SelectionColor = ColCaribbean;
+                txtConsola.AppendText("  ✅ COMPILACIÓN EXITOSA\n");
+                txtConsola.SelectionColor = ColPistachio;
+                txtConsola.AppendText("  Léxico ✓  │  Sintáctico ✓  │  Semántico ✓\n");
+                txtConsola.SelectionColor = ColMeadow;
+                txtConsola.AppendText("══════════════════════════════════════\n\n");
+
+                txtConsola.SelectionColor = ColMeadow;
+                txtConsola.AppendText("📖 ÁRBOL SINTÁCTICO:\n\n");
+                txtConsola.SelectionColor = ColAntiFlash;
+                txtConsola.AppendText(programa!.ToTreeString("", true));
             }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Error parseando: {ex.Message}"); }
         }
@@ -816,137 +906,7 @@ fin";
             using (FrmDocumentacion doc = new FrmDocumentacion()) doc.ShowDialog(this);
         }
 
-        private void BtnCompilar_Click(object? sender, EventArgs e)
-        {
-            gridTokens.Rows.Clear();
-            txtConsola.Clear();
 
-            // ═══════════════════════════════════════════════════════════════
-            // FASE 1: ANÁLISIS LÉXICO
-            // ═══════════════════════════════════════════════════════════════
-            txtConsola.SelectionColor = ColMeadow;
-            txtConsola.AppendText("══════════════════════════════════════════\n");
-            txtConsola.AppendText("  COMPILACIÓN DE PROGRAMA ASTRA\n");
-            txtConsola.AppendText("══════════════════════════════════════════\n\n");
-
-            txtConsola.SelectionColor = ColPistachio;
-            txtConsola.AppendText("🔍 Fase 1: Análisis Léxico...\n");
-
-            Lexer lexer = new Lexer(txtCodigo.Text);
-            List<Token> tokens = lexer.Tokenize();
-            var erroresLexicos = lexer.Errores;
-
-            foreach (var token in tokens)
-            {
-                string tokenName = token.Type.ToString().Replace("_", " ");
-                int rowIndex = gridTokens.Rows.Add(tokenName, token.Lexeme, token.Line, token.Column);
-                if (token.Type == TokenType.ERROR_LEXICO)
-                    gridTokens.Rows[rowIndex].DefaultCellStyle.BackColor = Color.FromArgb(60, 10, 10);
-            }
-
-            if (erroresLexicos.Count > 0)
-            {
-                txtConsola.SelectionColor = Color.FromArgb(255, 100, 80);
-                txtConsola.AppendText($"   ❌ {erroresLexicos.Count} error(es) léxico(s) encontrado(s)\n\n");
-                foreach (var err in erroresLexicos)
-                {
-                    txtConsola.SelectionColor = Color.FromArgb(255, 140, 100);
-                    txtConsola.AppendText($"   • Línea {err.Line}, Col {err.Column}: {err.Message}\n");
-                }
-                txtConsola.SelectionColor = ColStone;
-                txtConsola.AppendText("\n   ⛔ Compilación detenida en fase léxica.\n");
-                currentErrors = erroresLexicos;
-                errorRenderer.UpdateErrors(erroresLexicos);
-                txtCodigo.TextArea.TextView.Redraw();
-                ultimoAST = null;
-                return;
-            }
-
-            txtConsola.SelectionColor = ColCaribbean;
-            txtConsola.AppendText($"   ✅ Léxico correcto — {tokens.Count} tokens generados\n\n");
-
-            // ═══════════════════════════════════════════════════════════════
-            // FASE 2: ANÁLISIS SINTÁCTICO
-            // ═══════════════════════════════════════════════════════════════
-            txtConsola.SelectionColor = ColPistachio;
-            txtConsola.AppendText("🔍 Fase 2: Análisis Sintáctico...\n");
-
-            var parser = new Parser(tokens);
-            var (programa, erroresSintacticos) = parser.ParsePrograma();
-
-            if (erroresSintacticos.Count > 0)
-            {
-                txtConsola.SelectionColor = Color.FromArgb(255, 100, 80);
-                txtConsola.AppendText($"   ❌ {erroresSintacticos.Count} error(es) sintáctico(s) encontrado(s)\n\n");
-                foreach (var err in erroresSintacticos)
-                {
-                    txtConsola.SelectionColor = Color.FromArgb(255, 140, 100);
-                    txtConsola.AppendText($"   • Línea {err.Line}, Col {err.Column}: {err.Message}\n");
-                }
-                txtConsola.SelectionColor = ColStone;
-                txtConsola.AppendText("\n   ⛔ Compilación detenida en fase sintáctica.\n");
-                currentErrors = erroresSintacticos;
-                errorRenderer.UpdateErrors(erroresSintacticos);
-                txtCodigo.TextArea.TextView.Redraw();
-                ultimoAST = null;
-                return;
-            }
-
-            ultimoAST = programa;
-            txtConsola.SelectionColor = ColCaribbean;
-            txtConsola.AppendText("   ✅ Sintaxis correcta — AST generado\n\n");
-
-            // ═══════════════════════════════════════════════════════════════
-            // FASE 3: ANÁLISIS SEMÁNTICO
-            // ═══════════════════════════════════════════════════════════════
-            txtConsola.SelectionColor = ColPistachio;
-            txtConsola.AppendText("🔍 Fase 3: Análisis Semántico...\n");
-
-            var semantic = new SemanticAnalyzer();
-            var (semSuccess, semanticErrors) = semantic.Analyze(programa!);
-
-            if (!semSuccess)
-            {
-                txtConsola.SelectionColor = Color.FromArgb(255, 100, 80);
-                txtConsola.AppendText($"   ❌ {semanticErrors.Count} error(es) semántico(s) encontrado(s)\n\n");
-                foreach (var err in semanticErrors)
-                {
-                    txtConsola.SelectionColor = Color.FromArgb(255, 140, 100);
-                    txtConsola.AppendText($"   • Línea {err.Line}, Col {err.Column}: {err.Message}\n");
-                }
-                txtConsola.SelectionColor = ColStone;
-                txtConsola.AppendText("\n   ⛔ Compilación detenida en fase semántica.\n");
-                currentErrors = semanticErrors;
-                errorRenderer.UpdateErrors(semanticErrors);
-                txtCodigo.TextArea.TextView.Redraw();
-                return;
-            }
-
-            txtConsola.SelectionColor = ColCaribbean;
-            txtConsola.AppendText("   ✅ Semántica correcta — sin errores\n\n");
-
-            // ═══════════════════════════════════════════════════════════════
-            // RESUMEN Y RESULTADO FINAL
-            // ═══════════════════════════════════════════════════════════════
-            txtConsola.SelectionColor = ColMeadow;
-            txtConsola.AppendText("══════════════════════════════════════════\n");
-            txtConsola.SelectionColor = ColCaribbean;
-            txtConsola.AppendText("  ✅ COMPILACIÓN EXITOSA\n");
-            txtConsola.SelectionColor = ColPistachio;
-            txtConsola.AppendText("  Léxico ✓  │  Sintáctico ✓  │  Semántico ✓\n");
-            txtConsola.SelectionColor = ColMeadow;
-            txtConsola.AppendText("══════════════════════════════════════════\n\n");
-
-            txtConsola.SelectionColor = ColMeadow;
-            txtConsola.AppendText("📖 ÁRBOL SINTÁCTICO (texto):\n\n");
-            txtConsola.SelectionColor = ColAntiFlash;
-            txtConsola.AppendText(programa!.ToTreeString("", true));
-
-            // Limpiar subrayados y refrescar
-            currentErrors = new List<ErrorInfo>();
-            errorRenderer.UpdateErrors(currentErrors);
-            txtCodigo.TextArea.TextView.Redraw();
-        }
 
         private void BtnArboles_Click(object? sender, EventArgs e)
         {
