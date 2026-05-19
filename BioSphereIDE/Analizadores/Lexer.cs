@@ -1,113 +1,181 @@
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using BioSphereIDE.Core;
 
 namespace BioSphereIDE.Analizadores
 {
-          public class Lexer
-          {
-                    private readonly string _sourceCode;
-                    private int _position = 0, _line = 1, _column = 1;
-                    private readonly List<TokenDefinition> _tokenDefinitions;
-                    public List<ErrorInfo> Errores { get; } = new List<ErrorInfo>();
-                    public List<Token> Tokens { get; private set; } = new List<Token>();
+    public sealed class Lexer
+    {
+        private readonly string _source;
+        private int _pos, _line, _col;
+        private readonly List<TokenDefinition> _defs;
 
-                    public Lexer(string sourceCode)
+        public List<Token>     Tokens  { get; } = new();
+        public List<ErrorInfo> Errores { get; } = new();
+
+        // Keywords classified as PALABRA_RESERVADA during post-processing after identifier match
+        private static readonly HashSet<string> _keywords = new(StringComparer.Ordinal)
+        {
+            "simulacion", "planeta", "atmosfera", "agua", "vida", "inicio", "fin",
+            "si", "sino", "mientras", "iterar", "continuar", "romper", "reporte",
+            "mostrar", "verdadero", "falso", "nulo", "y", "o", "funcion"
+        };
+
+        public Lexer(string source) { _source = source ?? ""; _defs = BuildDefinitions(); }
+
+        // ────────────────────────────────────────────────────────────────────────
+        // Token patterns  (ORDER MATTERS — first match wins)
+        // ────────────────────────────────────────────────────────────────────────
+        private static List<TokenDefinition> BuildDefinitions() => new()
+        {
+            // ERRORS must come before their valid counterparts
+            new(TokenType.ERROR_LEXICO, @"\d+[a-zA-Z_][a-zA-Z0-9_]*"),   // 123abc
+            new(TokenType.ERROR_LEXICO, @"[@#\$%&!?\|\\~`]"),             // illegal chars
+            new(TokenType.ERROR_LEXICO, "\"[^\"\r\n]*$"),                  // unclosed string
+
+            // Numbers — scientific first, then float, then integer
+            new(TokenType.NUMERO, @"\d+\.?\d*[eE][+\-]?\d+"),
+            new(TokenType.NUMERO, @"\d+\.\d+"),
+            new(TokenType.NUMERO, @"\d+"),
+
+            // Operators — multi-char before single-char
+            new(TokenType.OPERADOR, @"<=|>=|==|!=|<|>|\+|-|\*|/|=|\^"),
+
+            // Strings with basic escape sequences
+            new(TokenType.CADENA, "\"(?:[^\"\\\\\\r\\n]|\\\\.)*\""),
+
+            // Symbols
+            new(TokenType.SIMBOLO, @"\(|\)|\{|\}|\[|\]|;|,|\.|°"),
+
+            // Identifiers — keywords promoted to PALABRA_RESERVADA in Tokenize()
+            new(TokenType.IDENTIFICADOR, @"[a-zA-ZáéíóúÁÉÍÓÚñÑ_][a-zA-ZáéíóúÁÉÍÓÚñÑ0-9_]*"),
+        };
+
+        // ────────────────────────────────────────────────────────────────────────
+        public List<Token> Tokenize()
+        {
+            Tokens.Clear();
+            Errores.Clear();
+            _pos = 0; _line = 1; _col = 1;
+
+            while (_pos < _source.Length)
+            {
+                char c = _source[_pos];
+
+                // Whitespace
+                if (char.IsWhiteSpace(c)) { Advance(c); continue; }
+
+                // Single-line comment  //
+                if (c == '/' && Peek1() == '/')
+                {
+                    while (_pos < _source.Length && _source[_pos] != '\n')
+                        Advance(_source[_pos]);
+                    continue;
+                }
+
+                // Block comment  /* ... */
+                if (c == '/' && Peek1() == '*') { ParseBlockComment(); continue; }
+
+                bool matched = false;
+                int tokLine = _line, tokCol = _col;
+
+                foreach (var def in _defs)
+                {
+                    Match m = def.Regex.Match(_source, _pos);
+                    if (!m.Success) continue;
+
+                    if (def.Type == TokenType.ERROR_LEXICO)
+                        EmitLexError(m.Value, tokLine, tokCol);
+
+                    var tokType = def.Type;
+                    if (tokType == TokenType.IDENTIFICADOR && _keywords.Contains(m.Value))
+                        tokType = TokenType.PALABRA_RESERVADA;
+
+                    Tokens.Add(new Token(tokType, m.Value, tokLine, tokCol));
+                    foreach (char ch in m.Value) Advance(ch);
+                    matched = true;
+                    break;
+                }
+
+                if (!matched)
+                {
+                    char bad = _source[_pos];
+                    Errores.Add(new ErrorInfo
                     {
-                              _sourceCode = sourceCode;
-                              _tokenDefinitions = new List<TokenDefinition>
-                              {
-                                        // Palabras reservadas (estructurales y de control)
-                                        new TokenDefinition(TokenType.PALABRA_RESERVADA, @"\b(simulacion|planeta|atmosfera|agua|vida|inicio|fin|si|sino|mientras|iterar|continuar|romper|reporte|mostrar|verdadero|falso|nulo|y|o|funcion)\b"),
+                        Type = ErrorType.Lexico, Code = "LEX-001",
+                        Line = _line, Column = _col, Length = 1,
+                        Message    = $"Carácter ilegal '{bad}' (U+{(int)bad:X4}) no permitido en ASTRA.",
+                        Suggestion = "Elimine o reemplace los caracteres especiales no permitidos."
+                    });
+                    Tokens.Add(new Token(TokenType.ERROR_LEXICO, bad.ToString(), _line, _col));
+                    Advance(bad);
+                }
+            }
 
-                                        // ERRORES LÉXICOS: números pegados a letras (DEBEN IR ANTES QUE NUMERO)
-                                        new TokenDefinition(TokenType.ERROR_LEXICO, @"\d+[a-zA-Z_][a-zA-Z0-9_]*"),
-                                        new TokenDefinition(TokenType.ERROR_LEXICO, @"[@#$%&!?|\\~`]"),
+            Tokens.Add(new Token(TokenType.EOF, "EOF", _line, _col));
+            return Tokens;
+        }
 
-                                        // NÚMEROS
-                                        new TokenDefinition(TokenType.NUMERO, @"\d+\.\d+"),
-                                        new TokenDefinition(TokenType.NUMERO, @"\d+"),
+        // ────────────────────────────────────────────────────────────────────────
+        private void ParseBlockComment()
+        {
+            int startLine = _line, startCol = _col;
+            Advance('/'); Advance('*');
+            while (_pos < _source.Length)
+            {
+                if (_source[_pos] == '*' && Peek1() == '/') { Advance('*'); Advance('/'); return; }
+                Advance(_source[_pos]);
+            }
+            Errores.Add(new ErrorInfo
+            {
+                Type = ErrorType.Lexico, Code = "LEX-005",
+                Line = startLine, Column = startCol, Length = 2,
+                Message    = $"Comentario de bloque sin cerrar (iniciado en línea {startLine}, columna {startCol}).",
+                Suggestion = "Agregue '*/' para cerrar el comentario."
+            });
+        }
 
-                                        // OPERADORES
-                                        new TokenDefinition(TokenType.OPERADOR, @"<=|>=|==|!=|<|>|\+|-|\*|/|=|\^"),
+        private void EmitLexError(string value, int line, int col)
+        {
+            string code, msg, sugg;
 
-                                        // Cadenas
-                                        new TokenDefinition(TokenType.CADENA, "\"[^\"\r\n]*\""),
-                                        new TokenDefinition(TokenType.ERROR_LEXICO, "\"[^\"\r\n]*$"),
+            if (Regex.IsMatch(value, @"^\d+[a-zA-Z_]"))
+            {
+                code = "LEX-002";
+                msg  = $"Identificador inválido '{value}': los identificadores no pueden comenzar con un dígito.";
+                sugg = $"Use un prefijo alfabético, p. ej. 'n{value}' o 'var{value[0]}…'.";
+            }
+            else if (value.StartsWith("\""))
+            {
+                code = "LEX-003";
+                string preview = value.Length > 25 ? value.Substring(0, 22) + "..." : value;
+                msg  = $"Cadena de texto sin cerrar: {preview}";
+                sugg = "Agregue '\"' al final de la cadena de texto.";
+            }
+            else
+            {
+                code = "LEX-001";
+                msg  = $"Carácter ilegal '{value}' no permitido en ASTRA.";
+                sugg = "Elimine el carácter especial o use una cadena de texto para incluirlo.";
+            }
 
-                                        // Símbolos del lenguaje
-                                        new TokenDefinition(TokenType.SIMBOLO, @"\(|\)|\{|\}|\[|\]|;|,|\.|°"),
+            Errores.Add(new ErrorInfo
+            {
+                Type = ErrorType.Lexico, Code = code,
+                Line = line, Column = col, Length = value.Length,
+                Message = msg, Suggestion = sugg
+            });
+        }
 
-                                        // Identificadores válidos
-                                        new TokenDefinition(TokenType.IDENTIFICADOR, @"[a-zA-Z_][a-zA-Z0-9_]*"),
-                              };                
-                                  }
+        private char Peek1() => _pos + 1 < _source.Length ? _source[_pos + 1] : '\0';
 
-                    private void AdvancePosition(char c)
-                    {
-                              if (c == '\n') { _line++; _column = 1; }
-                              else if (c == '\t') { _column += 4; }
-                              else { _column++; }
-                              _position++;
-                    }
-
-                    public List<Token> Tokenize()
-                    {
-                              Tokens.Clear();
-                              Errores.Clear();
-                              _position = 0; _line = 1; _column = 1;
-
-                              while (_position < _sourceCode.Length)
-                              {
-                                        if (char.IsWhiteSpace(_sourceCode[_position]))
-                                        {
-                                                  AdvancePosition(_sourceCode[_position]);
-                                                  continue;
-                                        }
-
-                                        // Comentarios de línea
-                                        if (_position + 1 < _sourceCode.Length && _sourceCode[_position] == '/' && _sourceCode[_position + 1] == '/')
-                                        {
-                                                  int startCol = _column, startLine = _line;
-                                                  while (_position < _sourceCode.Length && _sourceCode[_position] != '\n')
-                                                            AdvancePosition(_sourceCode[_position]);
-                                                  // No se agrega token de comentario para no interferir
-                                                  continue;
-                                        }
-
-                                        bool matchFound = false;
-                                        foreach (var def in _tokenDefinitions)
-                                        {
-                                                  Match match = def.Regex.Match(_sourceCode, _position);
-                                                  if (match.Success)
-                                                  {
-                                                            if (def.Type == TokenType.ERROR_LEXICO)
-                                                            {
-                                                                      string msg;
-                                                                      if (Regex.IsMatch(match.Value, @"^\d+[a-zA-Z_]"))
-                                                                                msg = $"Identificador inválido '{match.Value}': no puede comenzar con un número";
-                                                                      else if (match.Value.StartsWith("\""))
-                                                                                msg = $"Cadena de texto sin cerrar: {match.Value}";
-                                                                      else
-                                                                                msg = $"Carácter ilegal '{match.Value}' no permitido en ASTRA";
-                                                                      Errores.Add(new ErrorInfo { Line = _line, Column = _column, Length = match.Value.Length, Message = msg, Type = ErrorType.Lexico });
-                                                            }
-                                                            Tokens.Add(new Token(def.Type, match.Value, _line, _column));
-                                                            foreach (char c in match.Value) AdvancePosition(c);
-                                                            matchFound = true;
-                                                            break;
-                                                  }
-                                        }
-
-                                        if (!matchFound)
-                                        {
-                                                  Errores.Add(new ErrorInfo { Line = _line, Column = _column, Length = 1, Message = $"Símbolo '{_sourceCode[_position]}' no reconocido", Type = ErrorType.Lexico });
-                                                  Tokens.Add(new Token(TokenType.ERROR_LEXICO, _sourceCode[_position].ToString(), _line, _column));
-                                                  AdvancePosition(_sourceCode[_position]);
-                                        }
-                              }
-                              Tokens.Add(new Token(TokenType.EOF, "EOF", _line, _column));
-                              return Tokens;
-                    }
-          }
+        private void Advance(char c)
+        {
+            _pos++;
+            if      (c == '\n') { _line++; _col = 1; }
+            else if (c == '\t') { _col += 4; }
+            else                { _col++; }
+        }
+    }
 }

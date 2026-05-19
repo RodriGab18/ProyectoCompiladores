@@ -1,969 +1,629 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
 using BioSphereIDE.Core;
 
+// All AST node types live in AST.cs (same namespace — no import needed).
 namespace BioSphereIDE.Analizadores
 {
-          // ==================== NODOS DEL ÁRBOL SINTÁCTICO ====================
-          public abstract class NodoAST
-          {
-                    public abstract string ToTreeString(string indent, bool isLast);
-          }
-
-          public class NodoPrograma : NodoAST
-          {
-                    public NodoBloqueSimulacion BloqueSimulacion { get; set; } = null!;
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              var sb = new StringBuilder();
-                              sb.AppendLine(indent + (isLast ? "└── " : "├── ") + "PROGRAMA");
-                              string newIndent = indent + (isLast ? "    " : "│   ");
-                              sb.Append(newIndent + "├── inicio\n");
-                              sb.Append(BloqueSimulacion.ToTreeString(newIndent, false));
-                              sb.Append(newIndent + "└── fin\n");
-                              return sb.ToString();
-                    }
-          }
-
-          public class NodoBloqueSimulacion : NodoAST
-          {
-                    public List<NodoSentencia> Sentencias { get; set; } = new List<NodoSentencia>();
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              var sb = new StringBuilder();
-                              sb.AppendLine(indent + (isLast ? "└── " : "├── ") + "BLOQUE_SIMULACION");
-                              string newIndent = indent + (isLast ? "    " : "│   ");
-                              sb.Append(newIndent + "├── simulacion\n");
-                              sb.Append(newIndent + "├── {\n");
-                              for (int i = 0; i < Sentencias.Count; i++)
-                                        sb.Append(Sentencias[i].ToTreeString(newIndent + "│   ", i == Sentencias.Count - 1));
-                              sb.Append(newIndent + "└── }\n");
-                              return sb.ToString();
-                    }
-          }
-
-          public class NodoBloquePlaneta : NodoSentencia
-          {
-                    public List<NodoSentencia> Sentencias { get; set; } = new List<NodoSentencia>();
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              var sb = new StringBuilder();
-                              sb.AppendLine(indent + (isLast ? "└── " : "├── ") + "BLOQUE_PLANETA");
-                              string newIndent = indent + (isLast ? "    " : "│   ");
-                              sb.Append(newIndent + "├── planeta\n");
-                              sb.Append(newIndent + "├── {\n");
-                              for (int i = 0; i < Sentencias.Count; i++)
-                                        sb.Append(Sentencias[i].ToTreeString(newIndent + "│   ", i == Sentencias.Count - 1));
-                              sb.Append(newIndent + "└── }\n");
-                              return sb.ToString();
-                    }
-          }
-
-          public class NodoBloqueAtmosfera : NodoSentencia
-          {
-                    public List<NodoSentencia> Sentencias { get; set; } = new List<NodoSentencia>();
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              var sb = new StringBuilder();
-                              sb.AppendLine(indent + (isLast ? "└── " : "├── ") + "BLOQUE_ATMOSFERA");
-                              string newIndent = indent + (isLast ? "    " : "│   ");
-                              sb.Append(newIndent + "├── atmosfera\n");
-                              sb.Append(newIndent + "├── {\n");
-                              for (int i = 0; i < Sentencias.Count; i++)
-                                        sb.Append(Sentencias[i].ToTreeString(newIndent + "│   ", i == Sentencias.Count - 1));
-                              sb.Append(newIndent + "└── }\n");
-                              return sb.ToString();
-                    }
-          }
-
-          public class NodoBloqueAgua : NodoSentencia
-          {
-                    public List<NodoSentencia> Sentencias { get; set; } = new List<NodoSentencia>();
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              var sb = new StringBuilder();
-                              sb.AppendLine(indent + (isLast ? "└── " : "├── ") + "BLOQUE_AGUA");
-                              string newIndent = indent + (isLast ? "    " : "│   ");
-                              sb.Append(newIndent + "├── agua\n");
-                              sb.Append(newIndent + "├── {\n");
-                              for (int i = 0; i < Sentencias.Count; i++)
-                                        sb.Append(Sentencias[i].ToTreeString(newIndent + "│   ", i == Sentencias.Count - 1));
-                              sb.Append(newIndent + "└── }\n");
-                              return sb.ToString();
-                    }
-          }
-
-          public class NodoBloqueVida : NodoSentencia
-          {
-                    public List<NodoSentencia> Sentencias { get; set; } = new List<NodoSentencia>();
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              var sb = new StringBuilder();
-                              sb.AppendLine(indent + (isLast ? "└── " : "├── ") + "BLOQUE_VIDA");
-                              string newIndent = indent + (isLast ? "    " : "│   ");
-                              sb.Append(newIndent + "├── vida\n");
-                              sb.Append(newIndent + "├── {\n");
-                              for (int i = 0; i < Sentencias.Count; i++)
-                                        sb.Append(Sentencias[i].ToTreeString(newIndent + "│   ", i == Sentencias.Count - 1));
-                              sb.Append(newIndent + "└── }\n");
-                              return sb.ToString();
-                    }
-          }
-
-          public abstract class NodoSentencia : NodoAST { }
-
-          public class NodoAsignacion : NodoSentencia
-          {
-                    public string Identificador { get; set; } = "";
-                    public NodoValor Valor { get; set; } = null!;
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              return indent + (isLast ? "└── " : "├── ") + $"ASIGNACION: {Identificador} = {Valor?.ToString() ?? "?"}\n";
-                    }
-          }
-
-          public class NodoMostrar : NodoSentencia
-          {
-                    public NodoValor Valor { get; set; } = null!;
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              return indent + (isLast ? "└── " : "├── ") + $"MOSTRAR: {Valor?.ToString() ?? "?"}\n";
-                    }
-          }
-
-          public class NodoReporte : NodoSentencia
-          {
-                    public NodoValor Valor { get; set; } = null!;
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              return indent + (isLast ? "└── " : "├── ") + $"REPORTE: {Valor?.ToString() ?? "?"}\n";
-                    }
-          }
-
-          public class NodoIf : NodoSentencia
-          {
-                    public NodoCondicion Condicion { get; set; } = null!;
-                    public List<NodoSentencia> ThenSentencias { get; set; } = new List<NodoSentencia>();
-                    public List<NodoSentencia> ElseSentencias { get; set; } = new List<NodoSentencia>();
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              var sb = new StringBuilder();
-                              sb.AppendLine(indent + (isLast ? "└── " : "├── ") + "IF");
-                              string newIndent = indent + (isLast ? "    " : "│   ");
-                              sb.Append(Condicion.ToTreeString(newIndent, false));
-                              sb.Append(newIndent + "├── then {\n");
-                              for (int i = 0; i < ThenSentencias.Count; i++)
-                                        sb.Append(ThenSentencias[i].ToTreeString(newIndent + "│   ", i == ThenSentencias.Count - 1));
-                              sb.Append(newIndent + "│   └── }\n");
-                              if (ElseSentencias.Count > 0)
-                              {
-                                        sb.Append(newIndent + "└── else {\n");
-                                        for (int i = 0; i < ElseSentencias.Count; i++)
-                                                  sb.Append(ElseSentencias[i].ToTreeString(newIndent + "    ", i == ElseSentencias.Count - 1));
-                                        sb.Append(newIndent + "    └── }\n");
-                              }
-                              return sb.ToString();
-                    }
-          }
-
-          public class NodoWhile : NodoSentencia
-          {
-                    public NodoCondicion Condicion { get; set; } = null!;
-                    public List<NodoSentencia> Sentencias { get; set; } = new List<NodoSentencia>();
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              var sb = new StringBuilder();
-                              sb.AppendLine(indent + (isLast ? "└── " : "├── ") + "WHILE");
-                              string newIndent = indent + (isLast ? "    " : "│   ");
-                              sb.Append(Condicion.ToTreeString(newIndent, false));
-                              sb.Append(newIndent + "└── {\n");
-                              for (int i = 0; i < Sentencias.Count; i++)
-                                        sb.Append(Sentencias[i].ToTreeString(newIndent + "    ", i == Sentencias.Count - 1));
-                              sb.Append(newIndent + "    └── }\n");
-                              return sb.ToString();
-                    }
-          }
-
-          public class NodoCondicion : NodoAST
-          {
-                    public NodoValor Izquierda { get; set; } = null!;
-                    public string? Operador { get; set; }
-                    public NodoValor? Derecha { get; set; }
-                    public List<(string op, NodoCondicion cond)> OperadoresLogicos { get; set; } = new List<(string, NodoCondicion)>();
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              var sb = new StringBuilder();
-                              sb.AppendLine(indent + (isLast ? "└── " : "├── ") + "CONDICION");
-                              string newIndent = indent + (isLast ? "    " : "│   ");
-                              sb.Append(newIndent + "├── " + (Izquierda?.ToString() ?? "?") + "\n");
-                              if (!string.IsNullOrEmpty(Operador))
-                                        sb.Append(newIndent + "├── " + Operador + "\n" + newIndent + "└── " + (Derecha?.ToString() ?? "?") + "\n");
-                              else
-                                        sb.Append(newIndent + "└── (único valor)\n");
-                              foreach (var (op, cond) in OperadoresLogicos)
-                              {
-                                        sb.Append(newIndent + "├── " + op + "\n");
-                                        sb.Append(cond.ToTreeString(newIndent + "│   ", false));
-                              }
-                              return sb.ToString();
-                    }
-          }
-
-          public abstract class NodoValor : NodoAST
-          {
-                    public abstract override string ToString();
-          }
-
-          public class NodoCantidad : NodoValor
-          {
-                    public NodoExpr Expr { get; set; } = null!;
-                    public string? Unidad { get; set; }
-                    public override string ToString() => Expr?.ToString() + (Unidad != null ? " " + Unidad : "");
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              return indent + (isLast ? "└── " : "├── ") + $"CANTIDAD: {ToString()}\n";
-                    }
-          }
-
-          public class NodoBooleano : NodoValor
-          {
-                    public bool Valor { get; set; }
-                    public override string ToString() => Valor ? "verdadero" : "falso";
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              return indent + (isLast ? "└── " : "├── ") + $"BOOLEANO: {ToString()}\n";
-                    }
-          }
-
-          public class NodoNulo : NodoValor
-          {
-                    public override string ToString() => "nulo";
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              return indent + (isLast ? "└── " : "├── ") + $"NULO\n";
-                    }
-          }
-
-          public class NodoTexto : NodoValor
-          {
-                    public string Texto { get; set; } = "";
-                    public override string ToString() => $"\"{Texto}\"";
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              return indent + (isLast ? "└── " : "├── ") + $"TEXTO: {ToString()}\n";
-                    }
-          }
-
-          public class NodoLista : NodoValor
-          {
-                    public List<NodoValor> Valores { get; set; } = new List<NodoValor>();
-                    public override string ToString() => "[" + string.Join(", ", Valores) + "]";
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              var sb = new StringBuilder();
-                              sb.AppendLine(indent + (isLast ? "└── " : "├── ") + "LISTA");
-                              string newIndent = indent + (isLast ? "    " : "│   ");
-                              for (int i = 0; i < Valores.Count; i++)
-                                        sb.Append(Valores[i].ToTreeString(newIndent, i == Valores.Count - 1));
-                              return sb.ToString();
-                    }
-          }
-
-          public abstract class NodoExpr : NodoValor { }
-
-          public class NodoExprBinaria : NodoExpr
-          {
-                    public NodoExpr Izquierda { get; set; } = null!;
-                    public string Operador { get; set; } = "";
-                    public NodoExpr Derecha { get; set; } = null!;
-                    public override string ToString() => $"({Izquierda} {Operador} {Derecha})";
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              var sb = new StringBuilder();
-                              sb.AppendLine(indent + (isLast ? "└── " : "├── ") + $"EXPR_BINARIA: {Operador}");
-                              string newIndent = indent + (isLast ? "    " : "│   ");
-                              sb.Append(Izquierda.ToTreeString(newIndent, false));
-                              sb.Append(Derecha.ToTreeString(newIndent, true));
-                              return sb.ToString();
-                    }
-          }
-
-          public class NodoExprPotencia : NodoExpr
-          {
-                    public NodoExpr Base { get; set; } = null!;
-                    public NodoExpr Exponente { get; set; } = null!;
-                    public override string ToString() => $"({Base}^{Exponente})";
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              var sb = new StringBuilder();
-                              sb.AppendLine(indent + (isLast ? "└── " : "├── ") + "POTENCIA");
-                              string newIndent = indent + (isLast ? "    " : "│   ");
-                              sb.Append(Base.ToTreeString(newIndent, false));
-                              sb.Append(Exponente.ToTreeString(newIndent, true));
-                              return sb.ToString();
-                    }
-          }
-
-          public class NodoExprNumero : NodoExpr
-          {
-                    public string Valor { get; set; } = "";
-                    public override string ToString() => Valor;
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              return indent + (isLast ? "└── " : "├── ") + $"NUMERO: {Valor}\n";
-                    }
-          }
-
-          public class NodoExprIdentificador : NodoExpr
-          {
-                    public string Nombre { get; set; } = "";
-                    public override string ToString() => Nombre;
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              return indent + (isLast ? "└── " : "├── ") + $"IDENTIFICADOR: {Nombre}\n";
-                    }
-          }
-
-          public class NodoExprParentesis : NodoExpr
-          {
-                    public NodoExpr Expr { get; set; } = null!;
-                    public override string ToString() => $"({Expr})";
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              var sb = new StringBuilder();
-                              sb.AppendLine(indent + (isLast ? "└── " : "├── ") + "PARENTESIS");
-                              string newIndent = indent + (isLast ? "    " : "│   ");
-                              sb.Append(Expr.ToTreeString(newIndent, true));
-                              return sb.ToString();
-                    }
-          }
-
-          // Nodos para funciones
-          public class NodoDefinicionFuncion : NodoSentencia
-          {
-                    public string Nombre { get; set; } = "";
-                    public List<string> Parametros { get; set; } = new List<string>();
-                    public List<NodoSentencia> Sentencias { get; set; } = new List<NodoSentencia>();
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              var sb = new StringBuilder();
-                              sb.AppendLine(indent + (isLast ? "└── " : "├── ") + $"FUNCION: {Nombre}({string.Join(", ", Parametros)})");
-                              string newIndent = indent + (isLast ? "    " : "│   ");
-                              sb.Append(newIndent + "├── {\n");
-                              for (int i = 0; i < Sentencias.Count; i++)
-                                        sb.Append(Sentencias[i].ToTreeString(newIndent + "│   ", i == Sentencias.Count - 1));
-                              sb.Append(newIndent + "└── }\n");
-                              return sb.ToString();
-                    }
-          }
-
-          public class NodoLlamadaFuncion : NodoExpr
-          {
-                    public string Nombre { get; set; } = "";
-                    public List<NodoValor> Argumentos { get; set; } = new List<NodoValor>();
-                    public override string ToString() => $"{Nombre}({string.Join(", ", Argumentos)})";
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              var sb = new StringBuilder();
-                              sb.AppendLine(indent + (isLast ? "└── " : "├── ") + $"LLAMADA: {Nombre}");
-                              string newIndent = indent + (isLast ? "    " : "│   ");
-                              if (Argumentos.Count > 0)
-                              {
-                                        sb.Append(newIndent + "├── argumentos:\n");
-                                        for (int i = 0; i < Argumentos.Count; i++)
-                                                  sb.Append(Argumentos[i].ToTreeString(newIndent + "│   ", i == Argumentos.Count - 1));
-                              }
-                              else
-                                        sb.Append(newIndent + "└── (sin argumentos)\n");
-                              return sb.ToString();
-                    }
-          }
-
-          public class NodoExpresionSentencia : NodoSentencia
-          {
-                    public NodoExpr Expresion { get; set; } = null!;
-                    public override string ToTreeString(string indent, bool isLast)
-                    {
-                              return Expresion.ToTreeString(indent, isLast);
-                    }
-          }
-
-          // ==================== PARSER ====================
-          public class Parser
-          {
-                    private List<Token> _tokens;
-                    private int _pos;
-                    private List<ErrorInfo> _errores;
-                    private Dictionary<string, int> _funcionesDefinidas = new Dictionary<string, int>();
-                    private Token? Current => _pos < _tokens.Count ? _tokens[_pos] : null;
-
-                    public Parser(List<Token> tokens)
-                    {
-                              _tokens = tokens;
-                              _pos = 0;
-                              _errores = new List<ErrorInfo>();
-                              SkipComments();
-                    }
-
-                    private void SkipComments()
-                    {
-                              while (Current != null && Current.Type == TokenType.SIMBOLO && Current.Lexeme.StartsWith("//"))
-                                        _pos++;
-                    }
-
-                    private void AddError(string message, Token? token)
-                    {
-                              _errores.Add(new ErrorInfo
-                              {
-                                        Line = token?.Line ?? 1,
-                                        Column = token?.Column ?? 1,
-                                        Length = token?.Length ?? 1,
-                                        Message = message,
-                                        Type = ErrorType.Estructural
-                              });
-                    }
-
-                    private bool Eat(TokenType type, string? lexeme = null)
-                    {
-                              if (Current != null && Current.Type == type && (lexeme == null || Current.Lexeme == lexeme))
-                              {
-                                        _pos++;
-                                        SkipComments();
-                                        return true;
-                              }
-                              string expected = lexeme != null ? $"'{lexeme}'" : type.ToString();
-                              string found = Current != null ? $"{Current.Type} ('{Current.Lexeme}')" : "EOF";
-                              AddError($"Se esperaba {expected} pero se encontró {found}", Current);
-                              if (Current != null) _pos++;
-                              SkipComments();
-                              return false;
-                    }
-
-                    private Token? Match(TokenType type, string? lexeme = null)
-                    {
-                              if (Current != null && Current.Type == type && (lexeme == null || Current.Lexeme == lexeme))
-                              {
-                                        var token = Current;
-                                        _pos++;
-                                        SkipComments();
-                                        return token;
-                              }
-                              string expected = lexeme != null ? $"'{lexeme}'" : type.ToString();
-                              string found = Current != null ? $"{Current.Type} ('{Current.Lexeme}')" : "EOF";
-                              AddError($"Se esperaba {expected} pero se encontró {found}", Current);
-                              return null;
-                    }
-
-                    private bool Peek(TokenType type, string? lexeme = null)
-                    {
-                              return Current != null && Current.Type == type && (lexeme == null || Current.Lexeme == lexeme);
-                    }
-
-                    public (NodoPrograma? Programa, List<ErrorInfo> Errores) ParsePrograma()
-                    {
-                              _pos = 0;
-                              _errores.Clear();
-                              _funcionesDefinidas.Clear();
-                              SkipComments();
-
-                              // Obligatorio: "inicio"
-                              if (!Eat(TokenType.PALABRA_RESERVADA, "inicio"))
-                              {
-                                        AddError("Se esperaba 'inicio' al comienzo del programa.", Current);
-                                        return (null, _errores);
-                              }
-
-                              var bloqueSimulacion = ParseBloqueSimulacion();
-                              if (bloqueSimulacion == null)
-                                        return (null, _errores);
-
-                              // Obligatorio: "fin"
-                              if (!Eat(TokenType.PALABRA_RESERVADA, "fin"))
-                              {
-                                        AddError("Se esperaba 'fin' al final del programa.", Current);
-                                        return (null, _errores);
-                              }
-
-                              if (_errores.Count > 0)
-                                        return (null, _errores);
-
-                              return (new NodoPrograma { BloqueSimulacion = bloqueSimulacion }, _errores);
-                    }
-
-                    private NodoBloqueSimulacion? ParseBloqueSimulacion()
-                    {
-                              if (!Eat(TokenType.PALABRA_RESERVADA, "simulacion")) return null;
-                              if (!Eat(TokenType.SIMBOLO, "{")) return null;
-                              var sentencias = ParseListaSentenciasHastaCierre();
-                              Eat(TokenType.SIMBOLO, "}");
-                              return new NodoBloqueSimulacion { Sentencias = sentencias };
-                    }
-
-                    private List<NodoSentencia> ParseListaSentenciasHastaCierre()
-                    {
-                              var list = new List<NodoSentencia>();
-                              while (!Peek(TokenType.SIMBOLO, "}") && Current != null && Current.Type != TokenType.EOF)
-                              {
-                                        var sentencia = ParseSentencia();
-                                        if (sentencia != null)
-                                                  list.Add(sentencia);
-                                        else
-                                        {
-                                                  if (Current != null) _pos++;
-                                                  SkipComments();
-                                        }
-                              }
-                              return list;
-                    }
-
-                    private List<NodoSentencia> ParseListaSentenciasHastaCierreLlave()
-                    {
-                              var list = new List<NodoSentencia>();
-                              while (!Peek(TokenType.SIMBOLO, "}") && !Peek(TokenType.PALABRA_RESERVADA, "sino") && Current != null && Current.Type != TokenType.EOF)
-                              {
-                                        var sentencia = ParseSentencia();
-                                        if (sentencia != null)
-                                                  list.Add(sentencia);
-                                        else
-                                        {
-                                                  if (Current != null) _pos++;
-                                                  SkipComments();
-                                        }
-                              }
-                              return list;
-                    }
-
-                    private NodoSentencia? ParseSentencia()
-                    {
-                              if (Peek(TokenType.PALABRA_RESERVADA, "funcion"))
-                                        return ParseDefinicionFuncion();
-                              if (Peek(TokenType.PALABRA_RESERVADA, "planeta"))
-                                        return ParseBloquePlaneta();
-                              if (Peek(TokenType.PALABRA_RESERVADA, "atmosfera"))
-                                        return ParseBloqueAtmosfera();
-                              if (Peek(TokenType.PALABRA_RESERVADA, "agua"))
-                                        return ParseBloqueAgua();
-                              if (Peek(TokenType.PALABRA_RESERVADA, "vida"))
-                                        return ParseBloqueVida();
-                              if (Peek(TokenType.PALABRA_RESERVADA, "si"))
-                                        return ParseSi();
-                              if (Peek(TokenType.PALABRA_RESERVADA, "mientras"))
-                                        return ParseMientras();
-                              if (Peek(TokenType.PALABRA_RESERVADA, "mostrar"))
-                                        return ParseMostrar();
-                              if (Peek(TokenType.PALABRA_RESERVADA, "reporte"))
-                                        return ParseReporte();
-                              if (Peek(TokenType.IDENTIFICADOR))
-                                        return ParseAsignacionOLlamada();
-                              AddError("Se esperaba una sentencia válida", Current);
-                              return null;
-                    }
-
-                    private NodoBloquePlaneta? ParseBloquePlaneta()
-                    {
-                              if (!Eat(TokenType.PALABRA_RESERVADA, "planeta")) return null;
-                              if (!Eat(TokenType.SIMBOLO, "{")) return null;
-                              var sentencias = ParseListaSentenciasHastaCierreLlave();
-                              Eat(TokenType.SIMBOLO, "}");
-                              return new NodoBloquePlaneta { Sentencias = sentencias };
-                    }
-
-                    private NodoBloqueAtmosfera? ParseBloqueAtmosfera()
-                    {
-                              if (!Eat(TokenType.PALABRA_RESERVADA, "atmosfera")) return null;
-                              if (!Eat(TokenType.SIMBOLO, "{")) return null;
-                              var sentencias = ParseListaSentenciasHastaCierreLlave();
-                              Eat(TokenType.SIMBOLO, "}");
-                              return new NodoBloqueAtmosfera { Sentencias = sentencias };
-                    }
-
-                    private NodoBloqueAgua? ParseBloqueAgua()
-                    {
-                              if (!Eat(TokenType.PALABRA_RESERVADA, "agua")) return null;
-                              if (!Eat(TokenType.SIMBOLO, "{")) return null;
-                              var sentencias = ParseListaSentenciasHastaCierreLlave();
-                              Eat(TokenType.SIMBOLO, "}");
-                              return new NodoBloqueAgua { Sentencias = sentencias };
-                    }
-
-                    private NodoBloqueVida? ParseBloqueVida()
-                    {
-                              if (!Eat(TokenType.PALABRA_RESERVADA, "vida")) return null;
-                              if (!Eat(TokenType.SIMBOLO, "{")) return null;
-                              var sentencias = ParseListaSentenciasHastaCierreLlave();
-                              Eat(TokenType.SIMBOLO, "}");
-                              return new NodoBloqueVida { Sentencias = sentencias };
-                    }
-
-                    private NodoDefinicionFuncion? ParseDefinicionFuncion()
-                    {
-                              if (!Eat(TokenType.PALABRA_RESERVADA, "funcion")) return null;
-                              var nombreToken = Match(TokenType.IDENTIFICADOR);
-                              if (nombreToken == null) return null;
-                              if (!Eat(TokenType.SIMBOLO, "(")) return null;
-                              var parametros = new List<string>();
-                              if (!Peek(TokenType.SIMBOLO, ")"))
-                              {
-                                        var primerParam = Match(TokenType.IDENTIFICADOR);
-                                        if (primerParam != null) parametros.Add(primerParam.Lexeme);
-                                        while (Peek(TokenType.SIMBOLO, ","))
-                                        {
-                                                  Eat(TokenType.SIMBOLO, ",");
-                                                  var param = Match(TokenType.IDENTIFICADOR);
-                                                  if (param != null) parametros.Add(param.Lexeme);
-                                        }
-                              }
-                              if (!Eat(TokenType.SIMBOLO, ")")) return null;
-                              if (!Eat(TokenType.SIMBOLO, "{")) return null;
-                              var sentencias = ParseListaSentenciasHastaCierreLlave();
-                              if (!Eat(TokenType.SIMBOLO, "}")) return null;
-
-                              // Registrar función
-                              if (_funcionesDefinidas.ContainsKey(nombreToken.Lexeme))
-                                        AddError($"La función '{nombreToken.Lexeme}' ya está definida", nombreToken);
-                              else
-                                        _funcionesDefinidas.Add(nombreToken.Lexeme, parametros.Count);
-
-                              return new NodoDefinicionFuncion
-                              {
-                                        Nombre = nombreToken.Lexeme,
-                                        Parametros = parametros,
-                                        Sentencias = sentencias
-                              };
-                    }
-
-                    private NodoSentencia? ParseAsignacionOLlamada()
-                    {
-                              var idToken = Current;
-                              if (idToken == null) return null;
-
-                              Token? next = (_pos + 1 < _tokens.Count) ? _tokens[_pos + 1] : null;
-                              if (next != null && next.Type == TokenType.SIMBOLO && next.Lexeme == "(")
-                              {
-                                        _pos++;
-                                        SkipComments();
-                                        var llamada = ParseLlamadaFuncion(idToken.Lexeme);
-                                        if (llamada != null)
-                                        {
-                                                  Eat(TokenType.SIMBOLO, ";");
-                                                  return new NodoExpresionSentencia { Expresion = llamada };
-                                        }
-                                        return null;
-                              }
-                              else
-                              {
-                                        return ParseAsignacion();
-                              }
-                    }
-
-                    private NodoAsignacion? ParseAsignacion()
-                    {
-                              var idToken = Match(TokenType.IDENTIFICADOR);
-                              if (idToken == null) return null;
-                              if (!Eat(TokenType.OPERADOR, "=")) return null;
-                              var valor = ParseValor();
-                              if (valor == null) return null;
-                              Eat(TokenType.SIMBOLO, ";");
-                              return new NodoAsignacion { Identificador = idToken.Lexeme, Valor = valor };
-                    }
-
-                    private NodoMostrar? ParseMostrar()
-                    {
-                              if (!Eat(TokenType.PALABRA_RESERVADA, "mostrar")) return null;
-                              NodoValor? valor;
-                              if (Peek(TokenType.SIMBOLO, "("))
-                              {
-                                        Eat(TokenType.SIMBOLO, "(");
-                                        valor = ParseValor();
-                                        Eat(TokenType.SIMBOLO, ")");
-                              }
-                              else
-                              {
-                                        valor = ParseValor();
-                              }
-                              if (valor == null) return null;
-                              Eat(TokenType.SIMBOLO, ";");
-                              return new NodoMostrar { Valor = valor };
-                    }
-
-                    private NodoReporte? ParseReporte()
-                    {
-                              if (!Eat(TokenType.PALABRA_RESERVADA, "reporte")) return null;
-                              NodoValor? valor;
-                              if (Peek(TokenType.SIMBOLO, "("))
-                              {
-                                        Eat(TokenType.SIMBOLO, "(");
-                                        valor = ParseValor();
-                                        Eat(TokenType.SIMBOLO, ")");
-                              }
-                              else
-                              {
-                                        valor = ParseValor();
-                              }
-                              if (valor == null) return null;
-                              Eat(TokenType.SIMBOLO, ";");
-                              return new NodoReporte { Valor = valor };
-                    }
-
-                    private NodoIf? ParseSi()
-                    {
-                              if (!Eat(TokenType.PALABRA_RESERVADA, "si")) return null;
-                              if (!Eat(TokenType.SIMBOLO, "(")) return null;
-                              var cond = ParseCondicion();
-                              if (cond == null) return null;
-                              if (!Eat(TokenType.SIMBOLO, ")")) return null;
-                              if (!Eat(TokenType.SIMBOLO, "{")) return null;
-                              var thenSent = ParseListaSentenciasHastaCierreLlave();
-                              if (!Eat(TokenType.SIMBOLO, "}")) return null;
-                              var elseSent = new List<NodoSentencia>();
-                              if (Peek(TokenType.PALABRA_RESERVADA, "sino"))
-                              {
-                                        Eat(TokenType.PALABRA_RESERVADA, "sino");
-                                        if (Eat(TokenType.SIMBOLO, "{"))
-                                        {
-                                                  elseSent = ParseListaSentenciasHastaCierreLlave();
-                                                  Eat(TokenType.SIMBOLO, "}");
-                                        }
-                              }
-                              return new NodoIf { Condicion = cond, ThenSentencias = thenSent, ElseSentencias = elseSent };
-                    }
-
-                    private NodoWhile? ParseMientras()
-                    {
-                              if (!Eat(TokenType.PALABRA_RESERVADA, "mientras")) return null;
-                              if (!Eat(TokenType.SIMBOLO, "(")) return null;
-                              var cond = ParseCondicion();
-                              if (cond == null) return null;
-                              if (!Eat(TokenType.SIMBOLO, ")")) return null;
-                              if (!Eat(TokenType.SIMBOLO, "{")) return null;
-                              var sentencias = ParseListaSentenciasHastaCierreLlave();
-                              if (!Eat(TokenType.SIMBOLO, "}")) return null;
-                              return new NodoWhile { Condicion = cond, Sentencias = sentencias };
-                    }
-
-                    private NodoCondicion? ParseCondicion()
-                    {
-                              var leftVal = ParseValor();
-                              if (leftVal == null) return null;
-                              string? op = null;
-                              NodoValor? rightVal = null;
-                              if (IsRelationalOperator())
-                              {
-                                        op = Current!.Lexeme;
-                                        _pos++;
-                                        SkipComments();
-                                        rightVal = ParseValor();
-                                        if (rightVal == null) return null;
-                              }
-                              var cond = new NodoCondicion { Izquierda = leftVal, Operador = op, Derecha = rightVal };
-                              while (Peek(TokenType.PALABRA_RESERVADA, "y") || Peek(TokenType.PALABRA_RESERVADA, "o"))
-                              {
-                                        string logicalOp = Current!.Lexeme;
-                                        _pos++;
-                                        SkipComments();
-                                        var nextCond = ParseCondicion();
-                                        if (nextCond != null)
-                                                  cond.OperadoresLogicos.Add((logicalOp, nextCond));
-                              }
-                              return cond;
-                    }
-
-                    private bool IsRelationalOperator()
-                    {
-                              return Current != null && Current.Type == TokenType.OPERADOR &&
-                                     (Current.Lexeme == "<" || Current.Lexeme == ">" || Current.Lexeme == "<=" ||
-                                      Current.Lexeme == ">=" || Current.Lexeme == "==" || Current.Lexeme == "!=");
-                    }
-
-                    private NodoValor? ParseValor()
-                    {
-                              if (Peek(TokenType.PALABRA_RESERVADA, "verdadero") || Peek(TokenType.PALABRA_RESERVADA, "falso"))
-                              {
-                                        var token = Match(TokenType.PALABRA_RESERVADA);
-                                        if (token == null) return null;
-                                        return new NodoBooleano { Valor = token.Lexeme == "verdadero" };
-                              }
-                              if (Peek(TokenType.PALABRA_RESERVADA, "nulo"))
-                              {
-                                        if (!Eat(TokenType.PALABRA_RESERVADA, "nulo")) return null;
-                                        return new NodoNulo();
-                              }
-                              if (Peek(TokenType.CADENA))
-                              {
-                                        var token = Match(TokenType.CADENA);
-                                        if (token == null) return null;
-                                        string text = token.Lexeme.Substring(1, token.Lexeme.Length - 2);
-                                        return new NodoTexto { Texto = text };
-                              }
-                              if (Peek(TokenType.SIMBOLO, "["))
-                                        return ParseLista();
-                              return ParseCantidad();
-                    }
-
-                    private NodoLista? ParseLista()
-                    {
-                              if (!Eat(TokenType.SIMBOLO, "[")) return null;
-                              var valores = new List<NodoValor>();
-                              if (!Peek(TokenType.SIMBOLO, "]"))
-                              {
-                                        var primero = ParseValor();
-                                        if (primero != null) valores.Add(primero);
-                                        while (Peek(TokenType.SIMBOLO, ","))
-                                        {
-                                                  Eat(TokenType.SIMBOLO, ",");
-                                                  var sig = ParseValor();
-                                                  if (sig != null) valores.Add(sig);
-                                        }
-                              }
-                              Eat(TokenType.SIMBOLO, "]");
-                              return new NodoLista { Valores = valores };
-                    }
-
-                    private NodoCantidad? ParseCantidad()
-                    {
-                              var expr = ParseExpr();
-                              if (expr == null) return null;
-                              string? unidad = null;
-                              if (IsUnidad())
-                              {
-                                        unidad = Current!.Lexeme;
-                                        _pos++;
-                                        SkipComments();
-                              }
-                              return new NodoCantidad { Expr = expr, Unidad = unidad };
-                    }
-
-                    private bool IsUnidad()
-                    {
-                              if (Current == null || Current.Type != TokenType.IDENTIFICADOR) return false;
-                              string[] unidades = { "km", "m", "g", "kg", "atm", "ppm", "Sv", "%", "°C", "h", "s" };
-                              return Array.Exists(unidades, u => u == Current.Lexeme);
-                    }
-
-                    private NodoExpr? ParseExpr()
-                    {
-                              var left = ParseTerm();
-                              if (left == null) return null;
-                              while (Peek(TokenType.OPERADOR, "+") || Peek(TokenType.OPERADOR, "-"))
-                              {
-                                        string op = Current!.Lexeme;
-                                        _pos++;
-                                        SkipComments();
-                                        var right = ParseTerm();
-                                        if (right == null) return null;
-                                        left = new NodoExprBinaria { Izquierda = left, Operador = op, Derecha = right };
-                              }
-                              return left;
-                    }
-
-                    private NodoExpr? ParseTerm()
-                    {
-                              var left = ParsePotencia();
-                              if (left == null) return null;
-                              while (Peek(TokenType.OPERADOR, "*") || Peek(TokenType.OPERADOR, "/"))
-                              {
-                                        string op = Current!.Lexeme;
-                                        _pos++;
-                                        SkipComments();
-                                        var right = ParsePotencia();
-                                        if (right == null) return null;
-                                        left = new NodoExprBinaria { Izquierda = left, Operador = op, Derecha = right };
-                              }
-                              return left;
-                    }
-
-                    private NodoExpr? ParsePotencia()
-                    {
-                              var left = ParseFactor();
-                              if (left == null) return null;
-                              if (Peek(TokenType.OPERADOR, "^"))
-                              {
-                                        _pos++;
-                                        SkipComments();
-                                        var right = ParsePotencia();
-                                        if (right == null) return null;
-                                        return new NodoExprPotencia { Base = left, Exponente = right };
-                              }
-                              return left;
-                    }
-
-                    private NodoExpr? ParseFactor()
-                    {
-                              if (Peek(TokenType.OPERADOR, "-"))
-                              {
-                                        _pos++;
-                                        SkipComments();
-                                        var operand = ParseFactor();
-                                        if (operand == null) return null;
-                                        return new NodoExprBinaria { Izquierda = new NodoExprNumero { Valor = "0" }, Operador = "-", Derecha = operand };
-                              }
-                              if (Peek(TokenType.SIMBOLO, "("))
-                              {
-                                        if (!Eat(TokenType.SIMBOLO, "(")) return null;
-                                        var expr = ParseExpr();
-                                        if (expr == null) return null;
-                                        Eat(TokenType.SIMBOLO, ")");
-                                        return new NodoExprParentesis { Expr = expr };
-                              }
-                              if (Peek(TokenType.NUMERO))
-                              {
-                                        var token = Match(TokenType.NUMERO);
-                                        if (token == null) return null;
-                                        return new NodoExprNumero { Valor = token.Lexeme };
-                              }
-                              if (Peek(TokenType.IDENTIFICADOR))
-                              {
-                                        var idToken = Current;
-                                        Token? next = (_pos + 1 < _tokens.Count) ? _tokens[_pos + 1] : null;
-                                        if (next != null && next.Type == TokenType.SIMBOLO && next.Lexeme == "(")
-                                        {
-                                                  _pos++;
-                                                  SkipComments();
-                                                  var llamada = ParseLlamadaFuncion(idToken!.Lexeme);
-                                                  if (llamada != null) return llamada;
-                                                  return null;
-                                        }
-                                        else
-                                        {
-                                                  var token = Match(TokenType.IDENTIFICADOR);
-                                                  if (token == null) return null;
-                                                  return new NodoExprIdentificador { Nombre = token.Lexeme };
-                                        }
-                              }
-                              AddError("Se esperaba número, identificador, '(' o llamada a función", Current);
-                              return null;
-                    }
-
-                    private NodoLlamadaFuncion? ParseLlamadaFuncion(string nombre)
-                    {
-                              if (!Eat(TokenType.SIMBOLO, "(")) return null;
-                              var argumentos = new List<NodoValor>();
-                              if (!Peek(TokenType.SIMBOLO, ")"))
-                              {
-                                        var primerArg = ParseValor();
-                                        if (primerArg != null) argumentos.Add(primerArg);
-                                        while (Peek(TokenType.SIMBOLO, ","))
-                                        {
-                                                  Eat(TokenType.SIMBOLO, ",");
-                                                  var arg = ParseValor();
-                                                  if (arg != null) argumentos.Add(arg);
-                                        }
-                              }
-                              if (!Eat(TokenType.SIMBOLO, ")")) return null;
-
-                              // Validar número de argumentos contra definición
-                              if (_funcionesDefinidas.TryGetValue(nombre, out int numParams))
-                              {
-                                        if (argumentos.Count != numParams)
-                                                  AddError($"La función '{nombre}' espera {numParams} argumentos pero se recibieron {argumentos.Count}", Current);
-                              }
-                              else
-                              {
-                                        AddError($"Función '{nombre}' no definida", Current);
-                              }
-
-                              return new NodoLlamadaFuncion { Nombre = nombre, Argumentos = argumentos };
-                    }
-          }
+    // ════════════════════════════════════════════════════════════════════════════
+    //  PARSER  —  Recursive-descent parser for the ASTRA DSL.
+    //
+    //  Expression grammar (highest precedence first):
+    //   Factor      →  '-' Factor | '(' Expr ')' | Literal | Identifier | Call
+    //   Potencia    →  Factor  ('^' Potencia)?         (right-assoc)
+    //   Term        →  Potencia (('*'|'/') Potencia)*
+    //   Suma        →  Term    (('+'|'-') Term)*
+    //   Comparacion →  Suma    (RelOp Suma)?
+    //   And         →  Comparacion ('y' Comparacion)*
+    //   Or          →  And     ('o' And)*
+    //   Expr        →  Or                               (= ParseValor)
+    //
+    //  Conditions in 'si' and 'mientras' are full expressions (no separate
+    //  NodoCondicion node), validated as boolean by the semantic analyser.
+    // ════════════════════════════════════════════════════════════════════════════
+    public sealed class Parser
+    {
+        private readonly List<Token> _tokens;
+        private int _pos;
+        private readonly List<ErrorInfo> _errors = new();
+
+        // Tracks functions defined so far for arity checks at call sites.
+        private readonly Dictionary<string, int> _funcArity = new();
+
+        // ── Helpers ─────────────────────────────────────────────────────────────
+        private Token? Current  => _pos < _tokens.Count ? _tokens[_pos] : null;
+        private Token? LookAhead(int offset = 1) =>
+            (_pos + offset) < _tokens.Count ? _tokens[_pos + offset] : null;
+
+        public Parser(List<Token> tokens) { _tokens = tokens; }
+
+        // ── Error reporting ──────────────────────────────────────────────────────
+        private void AddError(string code, string msg, Token? at, string sugg = "")
+        {
+            _errors.Add(new ErrorInfo
+            {
+                Type       = ErrorType.Estructural,
+                Code       = code,
+                Line       = at?.Line   ?? 1,
+                Column     = at?.Column ?? 1,
+                Length     = at?.Length ?? 1,
+                Message    = msg,
+                Suggestion = sugg
+            });
+        }
+
+        // ── Navigation primitives ────────────────────────────────────────────────
+
+        /// Peek: true if current token matches type (and optionally lexeme).
+        private bool Peek(TokenType type, string? lexeme = null) =>
+            Current?.Type == type && (lexeme == null || Current.Lexeme == lexeme);
+
+        /// Consume: advance and return token if it matches; add error and return
+        /// null otherwise.  Does NOT advance on mismatch (let callers decide).
+        private Token? Consume(TokenType type, string? lexeme = null)
+        {
+            if (Current?.Type == type && (lexeme == null || Current.Lexeme == lexeme))
+            {
+                var tok = Current;
+                _pos++;
+                return tok;
+            }
+            string expected = lexeme != null ? $"'{lexeme}'" : $"<{type}>";
+            string found    = Current != null
+                ? $"'{Current.Lexeme}' ({Current.Type})"
+                : "fin de archivo";
+            AddError("SIN-001",
+                $"Se esperaba {expected} pero se encontró {found}.",
+                Current,
+                $"Verifique la sintaxis cerca de la línea {Current?.Line ?? 0}.");
+            return null;
+        }
+
+        /// Eat: like Consume but advances even on mismatch so parsing can continue.
+        private bool Eat(TokenType type, string? lexeme = null)
+        {
+            if (Current?.Type == type && (lexeme == null || Current.Lexeme == lexeme))
+            { _pos++; return true; }
+
+            string expected = lexeme != null ? $"'{lexeme}'" : $"<{type}>";
+            string found    = Current != null
+                ? $"'{Current.Lexeme}' ({Current.Type})"
+                : "fin de archivo";
+            AddError("SIN-001",
+                $"Se esperaba {expected} pero se encontró {found}.",
+                Current,
+                $"Verifique la sintaxis cerca de la línea {Current?.Line ?? 0}.");
+
+            // Advance so we don't loop forever on the same bad token.
+            if (Current != null && Current.Type != TokenType.EOF) _pos++;
+            return false;
+        }
+
+        /// Skip tokens until we reach a statement boundary or EOF.
+        private void Synchronize()
+        {
+            while (Current != null && Current.Type != TokenType.EOF)
+            {
+                if (Peek(TokenType.SIMBOLO, ";") || Peek(TokenType.SIMBOLO, "}"))
+                { _pos++; return; }
+                if (Current.Type == TokenType.PALABRA_RESERVADA) return;
+                _pos++;
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════════
+        //  ENTRY POINT
+        // ════════════════════════════════════════════════════════════════════════
+        public (NodoPrograma? Programa, List<ErrorInfo> Errores) ParsePrograma()
+        {
+            _pos = 0;
+            _errors.Clear();
+            _funcArity.Clear();
+
+            // Skip leading lexical-error tokens
+            SkipErrorTokens();
+
+            var inicioTok = Consume(TokenType.PALABRA_RESERVADA, "inicio");
+            if (inicioTok == null)
+            {
+                AddError("SIN-010", "El programa debe comenzar con 'inicio'.", Current,
+                    "Agregue 'inicio' al principio del archivo.");
+                return (null, _errors);
+            }
+
+            var bloque = ParseBloqueSimulacion();
+            if (bloque == null) return (null, _errors);
+
+            Consume(TokenType.PALABRA_RESERVADA, "fin");
+
+            // Accept even with errors so the IDE can display partial results.
+            return (new NodoPrograma { BloqueSimulacion = bloque, SourceToken = inicioTok }, _errors);
+        }
+
+        private void SkipErrorTokens()
+        {
+            while (Current?.Type == TokenType.ERROR_LEXICO) _pos++;
+        }
+
+        // ════════════════════════════════════════════════════════════════════════
+        //  BLOCKS
+        // ════════════════════════════════════════════════════════════════════════
+        private NodoBloqueSimulacion? ParseBloqueSimulacion()
+        {
+            var tok = Consume(TokenType.PALABRA_RESERVADA, "simulacion");
+            if (tok == null) return null;
+            if (!Eat(TokenType.SIMBOLO, "{")) return null;
+
+            var stmts = ParseStmtList(stopOnSino: false);
+            Eat(TokenType.SIMBOLO, "}");
+            return new NodoBloqueSimulacion { Sentencias = stmts, SourceToken = tok };
+        }
+
+        private NodoBloquePlaneta? ParseBloquePlaneta()
+        {
+            var tok = Consume(TokenType.PALABRA_RESERVADA, "planeta"); if (tok == null) return null;
+            if (!Eat(TokenType.SIMBOLO, "{")) return null;
+            var stmts = ParseStmtList(stopOnSino: false);
+            Eat(TokenType.SIMBOLO, "}");
+            return new NodoBloquePlaneta { Sentencias = stmts, SourceToken = tok };
+        }
+
+        private NodoBloqueAtmosfera? ParseBloqueAtmosfera()
+        {
+            var tok = Consume(TokenType.PALABRA_RESERVADA, "atmosfera"); if (tok == null) return null;
+            if (!Eat(TokenType.SIMBOLO, "{")) return null;
+            var stmts = ParseStmtList(stopOnSino: false);
+            Eat(TokenType.SIMBOLO, "}");
+            return new NodoBloqueAtmosfera { Sentencias = stmts, SourceToken = tok };
+        }
+
+        private NodoBloqueAgua? ParseBloqueAgua()
+        {
+            var tok = Consume(TokenType.PALABRA_RESERVADA, "agua"); if (tok == null) return null;
+            if (!Eat(TokenType.SIMBOLO, "{")) return null;
+            var stmts = ParseStmtList(stopOnSino: false);
+            Eat(TokenType.SIMBOLO, "}");
+            return new NodoBloqueAgua { Sentencias = stmts, SourceToken = tok };
+        }
+
+        private NodoBloqueVida? ParseBloqueVida()
+        {
+            var tok = Consume(TokenType.PALABRA_RESERVADA, "vida"); if (tok == null) return null;
+            if (!Eat(TokenType.SIMBOLO, "{")) return null;
+            var stmts = ParseStmtList(stopOnSino: false);
+            Eat(TokenType.SIMBOLO, "}");
+            return new NodoBloqueVida { Sentencias = stmts, SourceToken = tok };
+        }
+
+        // ════════════════════════════════════════════════════════════════════════
+        //  STATEMENT LIST
+        // ════════════════════════════════════════════════════════════════════════
+        private List<NodoSentencia> ParseStmtList(bool stopOnSino)
+        {
+            var list = new List<NodoSentencia>();
+            while (Current != null && Current.Type != TokenType.EOF)
+            {
+                if (Peek(TokenType.SIMBOLO, "}")) break;
+                if (stopOnSino && Peek(TokenType.PALABRA_RESERVADA, "sino")) break;
+
+                SkipErrorTokens();
+                if (Current == null || Current.Type == TokenType.EOF) break;
+                if (Peek(TokenType.SIMBOLO, "}")) break;
+
+                var stmt = ParseSentencia();
+                if (stmt != null) { list.Add(stmt); continue; }
+
+                // Could not parse — synchronize to avoid infinite loop.
+                Synchronize();
+            }
+            return list;
+        }
+
+        // ════════════════════════════════════════════════════════════════════════
+        //  STATEMENTS
+        // ════════════════════════════════════════════════════════════════════════
+        private NodoSentencia? ParseSentencia()
+        {
+            if (Current == null || Current.Type == TokenType.EOF) return null;
+
+            if (Peek(TokenType.PALABRA_RESERVADA, "planeta"))    return ParseBloquePlaneta();
+            if (Peek(TokenType.PALABRA_RESERVADA, "atmosfera"))  return ParseBloqueAtmosfera();
+            if (Peek(TokenType.PALABRA_RESERVADA, "agua"))       return ParseBloqueAgua();
+            if (Peek(TokenType.PALABRA_RESERVADA, "vida"))       return ParseBloqueVida();
+            if (Peek(TokenType.PALABRA_RESERVADA, "funcion"))    return ParseFuncion();
+            if (Peek(TokenType.PALABRA_RESERVADA, "si"))         return ParseSi();
+            if (Peek(TokenType.PALABRA_RESERVADA, "mientras"))   return ParseMientras();
+            if (Peek(TokenType.PALABRA_RESERVADA, "mostrar"))    return ParseMostrar();
+            if (Peek(TokenType.PALABRA_RESERVADA, "reporte"))    return ParseReporte();
+            if (Peek(TokenType.PALABRA_RESERVADA, "continuar"))
+            {
+                var t = Current!; _pos++;
+                Eat(TokenType.SIMBOLO, ";");
+                return new NodoContinuar { SourceToken = t };
+            }
+            if (Peek(TokenType.PALABRA_RESERVADA, "romper"))
+            {
+                var t = Current!; _pos++;
+                Eat(TokenType.SIMBOLO, ";");
+                return new NodoRomper { SourceToken = t };
+            }
+            if (Peek(TokenType.IDENTIFICADOR)) return ParseAsignacionOLlamada();
+
+            AddError("SIN-008", $"Sentencia inválida: token '{Current?.Lexeme}' inesperado.", Current,
+                "Verifique que la instrucción sea válida en ASTRA (asignación, si, mientras, mostrar, funcion…).");
+            return null;
+        }
+
+        // ── Function definition ──────────────────────────────────────────────────
+        private NodoDefinicionFuncion? ParseFuncion()
+        {
+            var tok = Consume(TokenType.PALABRA_RESERVADA, "funcion"); if (tok == null) return null;
+            var nameTok = Consume(TokenType.IDENTIFICADOR);            if (nameTok == null) return null;
+            if (!Eat(TokenType.SIMBOLO, "(")) return null;
+
+            var pars = new List<string>();
+            if (!Peek(TokenType.SIMBOLO, ")"))
+            {
+                var p = Consume(TokenType.IDENTIFICADOR);
+                if (p != null) pars.Add(p.Lexeme);
+                while (Peek(TokenType.SIMBOLO, ","))
+                {
+                    _pos++;
+                    var pn = Consume(TokenType.IDENTIFICADOR);
+                    if (pn != null) pars.Add(pn.Lexeme);
+                }
+            }
+            if (!Eat(TokenType.SIMBOLO, ")")) return null;
+            if (!Eat(TokenType.SIMBOLO, "{")) return null;
+            var body = ParseStmtList(stopOnSino: false);
+            if (!Eat(TokenType.SIMBOLO, "}")) return null;
+
+            // Register for call-site arity validation.
+            if (_funcArity.ContainsKey(nameTok.Lexeme))
+                AddError("SIN-007", $"La función '{nameTok.Lexeme}' ya está definida.", nameTok,
+                    "Cambie el nombre de una de las definiciones.");
+            else
+                _funcArity[nameTok.Lexeme] = pars.Count;
+
+            return new NodoDefinicionFuncion
+            {
+                Nombre     = nameTok.Lexeme,
+                Parametros = pars,
+                Sentencias = body,
+                SourceToken = tok
+            };
+        }
+
+        // ── If ───────────────────────────────────────────────────────────────────
+        private NodoIf? ParseSi()
+        {
+            var tok = Consume(TokenType.PALABRA_RESERVADA, "si"); if (tok == null) return null;
+            if (!Eat(TokenType.SIMBOLO, "(")) return null;
+            var cond = ParseExpr(); if (cond == null) return null;
+            if (!Eat(TokenType.SIMBOLO, ")")) return null;
+            if (!Eat(TokenType.SIMBOLO, "{")) return null;
+            var thenStmts = ParseStmtList(stopOnSino: true);
+            if (!Eat(TokenType.SIMBOLO, "}")) return null;
+
+            var elseStmts = new List<NodoSentencia>();
+            if (Peek(TokenType.PALABRA_RESERVADA, "sino"))
+            {
+                _pos++;
+                if (!Eat(TokenType.SIMBOLO, "{")) return null;
+                elseStmts = ParseStmtList(stopOnSino: false);
+                Eat(TokenType.SIMBOLO, "}");
+            }
+
+            return new NodoIf
+            {
+                Condicion      = cond,
+                ThenSentencias = thenStmts,
+                ElseSentencias = elseStmts,
+                SourceToken    = tok
+            };
+        }
+
+        // ── While ────────────────────────────────────────────────────────────────
+        private NodoWhile? ParseMientras()
+        {
+            var tok = Consume(TokenType.PALABRA_RESERVADA, "mientras"); if (tok == null) return null;
+            if (!Eat(TokenType.SIMBOLO, "(")) return null;
+            var cond = ParseExpr(); if (cond == null) return null;
+            if (!Eat(TokenType.SIMBOLO, ")")) return null;
+            if (!Eat(TokenType.SIMBOLO, "{")) return null;
+            var body = ParseStmtList(stopOnSino: false);
+            if (!Eat(TokenType.SIMBOLO, "}")) return null;
+
+            return new NodoWhile { Condicion = cond, Sentencias = body, SourceToken = tok };
+        }
+
+        // ── Mostrar / Reporte ────────────────────────────────────────────────────
+        private NodoMostrar? ParseMostrar()
+        {
+            var tok = Consume(TokenType.PALABRA_RESERVADA, "mostrar"); if (tok == null) return null;
+            NodoExpr? val;
+            if (Peek(TokenType.SIMBOLO, "("))
+            {
+                _pos++;
+                val = ParseExpr();
+                Eat(TokenType.SIMBOLO, ")");
+            }
+            else val = ParseExpr();
+
+            if (val == null) return null;
+            Eat(TokenType.SIMBOLO, ";");
+            return new NodoMostrar { Valor = val, SourceToken = tok };
+        }
+
+        private NodoReporte? ParseReporte()
+        {
+            var tok = Consume(TokenType.PALABRA_RESERVADA, "reporte"); if (tok == null) return null;
+            NodoExpr? val;
+            if (Peek(TokenType.SIMBOLO, "("))
+            {
+                _pos++;
+                val = ParseExpr();
+                Eat(TokenType.SIMBOLO, ")");
+            }
+            else val = ParseExpr();
+
+            if (val == null) return null;
+            Eat(TokenType.SIMBOLO, ";");
+            return new NodoReporte { Valor = val, SourceToken = tok };
+        }
+
+        // ── Assignment / Function-call statement ─────────────────────────────────
+        private NodoSentencia? ParseAsignacionOLlamada()
+        {
+            var idTok = Current!;
+            // Is this a function call?  id '(' ...
+            if (LookAhead()?.Type == TokenType.SIMBOLO && LookAhead()?.Lexeme == "(")
+            {
+                _pos++; // consume identifier
+                var call = ParseLlamadaFuncion(idTok.Lexeme, idTok);
+                if (call == null) return null;
+                Eat(TokenType.SIMBOLO, ";");
+                return new NodoExpresionSentencia { Expresion = call, SourceToken = idTok };
+            }
+            return ParseAsignacion();
+        }
+
+        private NodoAsignacion? ParseAsignacion()
+        {
+            var idTok = Consume(TokenType.IDENTIFICADOR); if (idTok == null) return null;
+            if (!Eat(TokenType.OPERADOR, "="))             return null;
+            var val = ParseExpr();                         if (val == null) return null;
+            Eat(TokenType.SIMBOLO, ";");
+            return new NodoAsignacion { Identificador = idTok.Lexeme, Valor = val, SourceToken = idTok };
+        }
+
+        // ════════════════════════════════════════════════════════════════════════
+        //  EXPRESSION GRAMMAR
+        //  ParseExpr = ParseOr  (entry point for any expression)
+        // ════════════════════════════════════════════════════════════════════════
+        private NodoExpr? ParseExpr() => ParseOr();
+
+        // Or: lowest precedence
+        private NodoExpr? ParseOr()
+        {
+            var left = ParseAnd();
+            while (left != null && Peek(TokenType.PALABRA_RESERVADA, "o"))
+            {
+                var tok = Current!; _pos++;
+                var right = ParseAnd();
+                if (right == null) break;
+                left = new NodoExprBinaria { Izquierda = left, Operador = "o", Derecha = right, SourceToken = tok };
+            }
+            return left;
+        }
+
+        private NodoExpr? ParseAnd()
+        {
+            var left = ParseComparacion();
+            while (left != null && Peek(TokenType.PALABRA_RESERVADA, "y"))
+            {
+                var tok = Current!; _pos++;
+                var right = ParseComparacion();
+                if (right == null) break;
+                left = new NodoExprBinaria { Izquierda = left, Operador = "y", Derecha = right, SourceToken = tok };
+            }
+            return left;
+        }
+
+        private NodoExpr? ParseComparacion()
+        {
+            var left = ParseSuma();
+            if (left != null && IsRelOp())
+            {
+                var tok = Current!; string op = tok.Lexeme; _pos++;
+                var right = ParseSuma();
+                if (right == null) return left;
+                return new NodoExprBinaria { Izquierda = left, Operador = op, Derecha = right, SourceToken = tok };
+            }
+            return left;
+        }
+
+        private NodoExpr? ParseSuma()
+        {
+            var left = ParseTerm();
+            while (left != null &&
+                   (Peek(TokenType.OPERADOR, "+") || Peek(TokenType.OPERADOR, "-")))
+            {
+                var tok = Current!; string op = tok.Lexeme; _pos++;
+                var right = ParseTerm();
+                if (right == null) break;
+                left = new NodoExprBinaria { Izquierda = left, Operador = op, Derecha = right, SourceToken = tok };
+            }
+            return left;
+        }
+
+        private NodoExpr? ParseTerm()
+        {
+            var left = ParsePotencia();
+            while (left != null &&
+                   (Peek(TokenType.OPERADOR, "*") || Peek(TokenType.OPERADOR, "/")))
+            {
+                var tok = Current!; string op = tok.Lexeme; _pos++;
+                var right = ParsePotencia();
+                if (right == null) break;
+                left = new NodoExprBinaria { Izquierda = left, Operador = op, Derecha = right, SourceToken = tok };
+            }
+            return left;
+        }
+
+        private NodoExpr? ParsePotencia()
+        {
+            var left = ParseFactor();
+            if (left != null && Peek(TokenType.OPERADOR, "^"))
+            {
+                var tok = Current!; _pos++;
+                var right = ParsePotencia(); // right-associative
+                if (right == null) return left;
+                return new NodoExprPotencia { Base = left, Exponente = right, SourceToken = tok };
+            }
+            return left;
+        }
+
+        private NodoExpr? ParseFactor()
+        {
+            // Unary minus
+            if (Peek(TokenType.OPERADOR, "-"))
+            {
+                var tok = Current!; _pos++;
+                var operand = ParseFactor();
+                if (operand == null) return null;
+                return new NodoExprUnaria { Operador = "-", Operando = operand, SourceToken = tok };
+            }
+
+            // Parenthesized expression — may contain full Or-level expressions
+            if (Peek(TokenType.SIMBOLO, "("))
+            {
+                var tok = Current!; _pos++;
+                var expr = ParseExpr();
+                if (expr == null) return null;
+                Eat(TokenType.SIMBOLO, ")");
+                return new NodoExprParentesis { Expr = expr, SourceToken = tok };
+            }
+
+            // Boolean literals
+            if (Peek(TokenType.PALABRA_RESERVADA, "verdadero") ||
+                Peek(TokenType.PALABRA_RESERVADA, "falso"))
+            {
+                var tok = Current!; _pos++;
+                return new NodoBooleano { Valor = tok.Lexeme == "verdadero", SourceToken = tok };
+            }
+
+            // Null literal
+            if (Peek(TokenType.PALABRA_RESERVADA, "nulo"))
+            {
+                var tok = Current!; _pos++;
+                return new NodoNulo { SourceToken = tok };
+            }
+
+            // String literal
+            if (Peek(TokenType.CADENA))
+            {
+                var tok = Current!; _pos++;
+                string text = tok.Lexeme.Length >= 2
+                    ? tok.Lexeme.Substring(1, tok.Lexeme.Length - 2)
+                    : tok.Lexeme;
+                return new NodoTexto { Texto = text, SourceToken = tok };
+            }
+
+            // List literal  [ v1, v2, … ]
+            if (Peek(TokenType.SIMBOLO, "[")) return ParseLista();
+
+            // Numeric literal, optionally followed by a physical unit
+            if (Peek(TokenType.NUMERO))
+            {
+                var tok = Current!; _pos++;
+                NodoExpr num = new NodoExprNumero { Valor = tok.Lexeme, SourceToken = tok };
+
+                if (IsUnit())
+                {
+                    var unitTok = Current!; _pos++;
+                    return new NodoCantidad { Expr = num, Unidad = unitTok.Lexeme, SourceToken = tok };
+                }
+                return num;
+            }
+
+            // Identifier or function call
+            if (Peek(TokenType.IDENTIFICADOR))
+            {
+                var idTok = Current!;
+                if (LookAhead()?.Type == TokenType.SIMBOLO && LookAhead()?.Lexeme == "(")
+                {
+                    _pos++; // consume identifier
+                    return ParseLlamadaFuncion(idTok.Lexeme, idTok);
+                }
+                _pos++;
+                return new NodoExprIdentificador { Nombre = idTok.Lexeme, SourceToken = idTok };
+            }
+
+            AddError("SIN-009",
+                $"Se esperaba un valor o expresión pero se encontró '{Current?.Lexeme ?? "EOF"}'.",
+                Current,
+                "Verifique que la expresión sea un número, variable, llamada a función, cadena o booleano.");
+            return null;
+        }
+
+        // ── List literal ─────────────────────────────────────────────────────────
+        private NodoLista? ParseLista()
+        {
+            var tok = Current!; _pos++;          // consume '['
+            var vals = new List<NodoValor>();
+            if (!Peek(TokenType.SIMBOLO, "]"))
+            {
+                var first = ParseExpr(); if (first != null) vals.Add(first);
+                while (Peek(TokenType.SIMBOLO, ","))
+                {
+                    _pos++;
+                    var v = ParseExpr(); if (v != null) vals.Add(v);
+                }
+            }
+            Eat(TokenType.SIMBOLO, "]");
+            return new NodoLista { Valores = vals, SourceToken = tok };
+        }
+
+        // ── Function call  name '(' args ')' ────────────────────────────────────
+        private NodoLlamadaFuncion? ParseLlamadaFuncion(string nombre, Token nameTok)
+        {
+            if (!Eat(TokenType.SIMBOLO, "(")) return null;
+            var args = new List<NodoValor>();
+            if (!Peek(TokenType.SIMBOLO, ")"))
+            {
+                var first = ParseExpr(); if (first != null) args.Add(first);
+                while (Peek(TokenType.SIMBOLO, ","))
+                {
+                    _pos++;
+                    var a = ParseExpr(); if (a != null) args.Add(a);
+                }
+            }
+            if (!Eat(TokenType.SIMBOLO, ")")) return null;
+
+            // Arity check against known definitions.
+            if (_funcArity.TryGetValue(nombre, out int expected))
+            {
+                if (args.Count != expected)
+                    AddError("SIN-006",
+                        $"La función '{nombre}' espera {expected} argumento(s), se recibieron {args.Count}.",
+                        nameTok,
+                        $"Ajuste el número de argumentos a {expected}.");
+            }
+            // Unknown functions are validated by the semantic analyser.
+
+            return new NodoLlamadaFuncion { Nombre = nombre, Argumentos = args, SourceToken = nameTok };
+        }
+
+        // ── Helpers ──────────────────────────────────────────────────────────────
+        private bool IsRelOp() =>
+            Current?.Type == TokenType.OPERADOR &&
+            Current.Lexeme is "<" or ">" or "<=" or ">=" or "==" or "!=";
+
+        private static readonly HashSet<string> _units = new(StringComparer.Ordinal)
+            { "km", "m", "g", "kg", "atm", "ppm", "Sv", "h", "s", "mol", "K", "Pa" };
+
+        private bool IsUnit() =>
+            Current?.Type == TokenType.IDENTIFICADOR && _units.Contains(Current.Lexeme);
+    }
 }

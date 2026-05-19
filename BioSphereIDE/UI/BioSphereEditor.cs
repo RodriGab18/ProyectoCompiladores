@@ -720,14 +720,7 @@ fin\f0\fs20\par
                     errorRenderer.UpdateErrors(currentErrors);
                     txtCodigo.TextArea.TextView.Redraw();
                     ultimoAST = null;
-
-                    txtConsola.SelectionColor = Color.FromArgb(255, 100, 80);
-                    txtConsola.AppendText($"❌ {erroresLexicos.Count} error(es) léxico(s)\n\n");
-                    foreach (var err in erroresLexicos)
-                    {
-                        txtConsola.SelectionColor = Color.FromArgb(255, 140, 100);
-                        txtConsola.AppendText($"  • Línea {err.Line}, Col {err.Column}: {err.Message}\n");
-                    }
+                    MostrarErrores("LÉXICO", erroresLexicos);
                     return;
                 }
 
@@ -741,14 +734,7 @@ fin\f0\fs20\par
                     errorRenderer.UpdateErrors(currentErrors);
                     txtCodigo.TextArea.TextView.Redraw();
                     ultimoAST = null;
-
-                    txtConsola.SelectionColor = Color.FromArgb(255, 100, 80);
-                    txtConsola.AppendText($"❌ {erroresSintacticos.Count} error(es) sintáctico(s)\n\n");
-                    foreach (var err in erroresSintacticos)
-                    {
-                        txtConsola.SelectionColor = Color.FromArgb(255, 140, 100);
-                        txtConsola.AppendText($"  • Línea {err.Line}, Col {err.Column}: {err.Message}\n");
-                    }
+                    MostrarErrores("SINTÁCTICO", erroresSintacticos);
                     return;
                 }
 
@@ -758,19 +744,16 @@ fin\f0\fs20\par
                 var semantic = new SemanticAnalyzer();
                 var (semSuccess, semanticErrors) = semantic.Analyze(programa!);
 
-                if (!semSuccess)
+                var errores      = semanticErrors.Where(e => e.Severity == BioSphereIDE.Core.Severity.Error).ToList();
+                var advertencias = semanticErrors.Where(e => e.Severity == BioSphereIDE.Core.Severity.Warning).ToList();
+
+                if (errores.Count > 0)
                 {
-                    currentErrors = semanticErrors;
+                    currentErrors = errores;
                     errorRenderer.UpdateErrors(currentErrors);
                     txtCodigo.TextArea.TextView.Redraw();
-
-                    txtConsola.SelectionColor = Color.FromArgb(255, 100, 80);
-                    txtConsola.AppendText($"❌ {semanticErrors.Count} error(es) semántico(s)\n\n");
-                    foreach (var err in semanticErrors)
-                    {
-                        txtConsola.SelectionColor = Color.FromArgb(255, 140, 100);
-                        txtConsola.AppendText($"  • Línea {err.Line}, Col {err.Column}: {err.Message}\n");
-                    }
+                    MostrarErrores("SEMÁNTICO", errores);
+                    if (advertencias.Count > 0) MostrarAdvertencias(advertencias);
                     return;
                 }
 
@@ -782,18 +765,58 @@ fin\f0\fs20\par
                 txtConsola.SelectionColor = ColMeadow;
                 txtConsola.AppendText("══════════════════════════════════════\n");
                 txtConsola.SelectionColor = ColCaribbean;
-                txtConsola.AppendText("  ✅ COMPILACIÓN EXITOSA\n");
+                txtConsola.AppendText("  COMPILACION EXITOSA\n");
                 txtConsola.SelectionColor = ColPistachio;
-                txtConsola.AppendText("  Léxico ✓  │  Sintáctico ✓  │  Semántico ✓\n");
+                txtConsola.AppendText("  Lexico OK  |  Sintactico OK  |  Semantico OK\n");
                 txtConsola.SelectionColor = ColMeadow;
                 txtConsola.AppendText("══════════════════════════════════════\n\n");
 
+                if (advertencias.Count > 0) MostrarAdvertencias(advertencias);
+
                 txtConsola.SelectionColor = ColMeadow;
-                txtConsola.AppendText("📖 ÁRBOL SINTÁCTICO:\n\n");
+                txtConsola.AppendText("ARBOL SINTACTICO:\n\n");
                 txtConsola.SelectionColor = ColAntiFlash;
                 txtConsola.AppendText(programa!.ToTreeString("", true));
             }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Error parseando: {ex.Message}"); }
+        }
+
+        private void MostrarErrores(string fase, List<ErrorInfo> errores)
+        {
+            txtConsola.SelectionColor = Color.FromArgb(255, 80, 60);
+            txtConsola.AppendText($"ERROR {fase} — {errores.Count} error(es)\n");
+            txtConsola.SelectionColor = ColMeadow;
+            txtConsola.AppendText("──────────────────────────────────────\n");
+            foreach (var err in errores)
+            {
+                string code = string.IsNullOrEmpty(err.Code) ? "" : $"[{err.Code}] ";
+                txtConsola.SelectionColor = Color.FromArgb(255, 130, 100);
+                txtConsola.AppendText($"  L{err.Line}:{err.Column}  {code}{err.Message}\n");
+                if (!string.IsNullOrEmpty(err.Suggestion))
+                {
+                    txtConsola.SelectionColor = ColPistachio;
+                    txtConsola.AppendText($"    → {err.Suggestion}\n");
+                }
+            }
+            txtConsola.AppendText("\n");
+        }
+
+        private void MostrarAdvertencias(List<ErrorInfo> warns)
+        {
+            txtConsola.SelectionColor = Color.FromArgb(255, 200, 80);
+            txtConsola.AppendText($"ADVERTENCIAS — {warns.Count} advertencia(s)\n");
+            foreach (var w in warns)
+            {
+                string code = string.IsNullOrEmpty(w.Code) ? "" : $"[{w.Code}] ";
+                txtConsola.SelectionColor = Color.FromArgb(255, 220, 120);
+                txtConsola.AppendText($"  L{w.Line}:{w.Column}  {code}{w.Message}\n");
+                if (!string.IsNullOrEmpty(w.Suggestion))
+                {
+                    txtConsola.SelectionColor = ColPistachio;
+                    txtConsola.AppendText($"    → {w.Suggestion}\n");
+                }
+            }
+            txtConsola.AppendText("\n");
         }
 
         private void TextView_MouseHover(object sender, System.Windows.Input.MouseEventArgs e)
@@ -813,7 +836,9 @@ fin\f0\fs20\par
                 }
                 if (found != null)
                 {
-                    string msg = $"[Línea {found.Line}, Col {found.Column}]  {found.Message}";
+                    string code = string.IsNullOrEmpty(found.Code) ? "" : $"[{found.Code}]  ";
+                    string sugg = string.IsNullOrEmpty(found.Suggestion) ? "" : $"\n→ {found.Suggestion}";
+                    string msg  = $"L{found.Line}:{found.Column}  {code}{found.Message}{sugg}";
                     var winPos = e.GetPosition(txtCodigo);
                     var formPos = editorHost.PointToScreen(new Point((int)winPos.X, (int)winPos.Y));
                     var clientPos = this.PointToClient(formPos);
@@ -830,31 +855,101 @@ fin\f0\fs20\par
 
         private void CargarCodigoCorrecto()
         {
-            txtCodigo.Text = @"inicio
+            txtCodigo.Text =
+@"
+inicio
 simulacion {
-    gravedad = 0;
+
+    // ── Variables globales de simulación ──────────────
+    ciclos    = 0;
+    habitables = 0;
+     masa=0;
+    co2=0;
+    presion=0;
+
+    // ── Bloque planeta ────────────────────────────────
     planeta {
-        masa = 5;
-        radio = 6371;
-        gravedad = (6 * masa) / (radio ^ 2);
+        masa  = 5.97e24 kg;
+        radio = 6371 km;
     }
+
+    // ── Bloque atmósfera ──────────────────────────────
     atmosfera {
-        presion = 0.006;
-        co2 = 95;
+        presion = 1.01 atm;
+        co2     = 415 ppm;
     }
+
+    // ── Bloque agua ───────────────────────────────────
     agua {
-        estado_liquido = falso;
+        estado_liquido = verdadero;
     }
+
+    // ── Funciones auxiliares ──────────────────────────
+    funcion densidad(m, v) {
+        resultado = m / v;
+        mostrar(resultado);
+    }
+
+    funcion esPotenciaDeBase(base, exp) {
+        valor = base ^ exp;
+        mostrar(valor);
+    }
+
+    // ── Bloque vida ───────────────────────────────────
     vida {
-        si (gravedad > 8 y gravedad < 12) {
-            mostrar(""Gravedad óptima para terraformación"");
-        } sino {
-            reporte(""Gravedad extrema, ajustar simulación"");
+        temperatura = -10;
+        indice      = 1;
+
+        /* Ciclo de ajuste de temperatura */
+        mientras (temperatura < 30) {
+            temperatura = temperatura + 5;
+            ciclos      = ciclos + 1;
+
+            // Saltar valores extremos fríos
+            si (temperatura < 0) {
+                continuar;
+            }
+
+            // Condición habitable: temperatura entre 10 y 25 grados
+            si (temperatura > 10 y temperatura < 25) {
+                habitables = habitables + 1;
+                mostrar(""Temperatura habitable"");
+            } sino {
+                si (temperatura >= 25 o temperatura == 0) {
+                    reporte(""Límite de habitabilidad"");
+                }
+            }
+
+            // Detener si alcanzamos 5 ciclos habitables
+            si (habitables == 5) {
+                romper;
+            }
         }
-        mientras (co2 > 0) {
-            co2 = co2 - 1;
-            mostrar(""Reduciendo CO2"");
-        }
+
+        // Reportes finales
+        reporte(""Ciclos totales ejecutados"");
+        reporte(ciclos);
+        reporte(""Zonas habitables encontradas"");
+        reporte(habitables);
+
+        // Cálculos con funciones y unidades
+        volumen = 1.08e12 kg;
+        densidad(masa, volumen);
+
+        esPotenciaDeBase(2, 10);
+
+        // Listas de datos
+        muestras = [15, 20, 25, 30];
+        activo   = verdadero;
+        nombre   = ""Kepler-442b"";
+
+        mostrar(nombre);
+        mostrar(activo);
+        mostrar(muestras);
+
+        // Expresión aritmética con unidades y paréntesis
+        energia = (presion * 1000) / (co2 + 1);
+        mostrar(energia);
     }
 }
 fin";
@@ -956,8 +1051,8 @@ fin";
                 case NodoExprBinaria bin: etiqueta = bin.Operador; tipo = "Operador"; break;
                 case NodoExprPotencia pot: etiqueta = "^"; tipo = "Operador"; break;
                 case NodoExprParentesis par: etiqueta = "( ... )"; tipo = "Parentesis"; break;
-                case NodoCondicion cond: etiqueta = cond.Operador ?? "condicion"; tipo = "Condicion"; break;
-                case NodoCantidad cant: etiqueta = cant.ToString(); tipo = "Cantidad"; break;
+                case NodoExprUnaria una: etiqueta = una.Operador; tipo = "Operador"; break;
+                case NodoCantidad cant: etiqueta = cant.ToString()!; tipo = "Cantidad"; break;
                 case NodoBooleano boo: etiqueta = boo.Valor ? "verdadero" : "falso"; tipo = "Booleano"; break;
                 case NodoTexto texto: etiqueta = texto.Texto; tipo = "Texto"; break;
                 case NodoLista lista: etiqueta = "lista"; tipo = "Lista"; break;
@@ -1038,20 +1133,9 @@ fin";
                     if (par.Expr != null)
                         visual.Hijos.Add(ConvertirAST(par.Expr)!);
                     break;
-                case NodoCondicion cond:
-                    if (cond.Izquierda != null)
-                        visual.Hijos.Add(ConvertirAST(cond.Izquierda)!);
-                    if (!string.IsNullOrEmpty(cond.Operador) && cond.Derecha != null)
-                    {
-                        visual.Hijos.Add(new NodoASTVisual(cond.Operador, "Operador"));
-                        visual.Hijos.Add(ConvertirAST(cond.Derecha)!);
-                    }
-                    foreach (var (op, sub) in cond.OperadoresLogicos)
-                    {
-                        visual.Hijos.Add(new NodoASTVisual(op, "Operador"));
-                        var subVisual = ConvertirAST(sub);
-                        if (subVisual != null) visual.Hijos.Add(subVisual);
-                    }
+                case NodoExprUnaria una:
+                    if (una.Operando != null)
+                        visual.Hijos.Add(ConvertirAST(una.Operando)!);
                     break;
                 case NodoCantidad cant:
                     if (cant.Expr != null)
@@ -1147,11 +1231,6 @@ fin";
                         break;
                     case NodoExprParentesis par:
                         Recorrer(par.Expr);
-                        break;
-                    case NodoCondicion cond:
-                        Recorrer(cond.Izquierda);
-                        if (cond.Derecha != null) Recorrer(cond.Derecha);
-                        foreach (var (_, sub) in cond.OperadoresLogicos) Recorrer(sub);
                         break;
                     case NodoCantidad cant:
                         Recorrer(cant.Expr);
