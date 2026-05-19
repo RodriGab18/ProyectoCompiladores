@@ -19,7 +19,7 @@ namespace BioSphereIDE.UI
                     }
           }
 
-          public class FrmVisualizadorArbol : Form
+          public class VisualizadorASTPanel : Panel
           {
                     private List<NodoASTVisual> arboles;
                     private int indiceActual = 0;
@@ -27,20 +27,26 @@ namespace BioSphereIDE.UI
                     private float zoom = 1.0f;
                     private Label lblEstado = null!;
 
-                    public FrmVisualizadorArbol(List<NodoASTVisual> arbolesAnalizados)
+                    public VisualizadorASTPanel()
                     {
-                              this.arboles = arbolesAnalizados;
-                              this.Text = "Visor de Árboles Sintácticos (AST) - Fase 2";
-                              this.Size = new Size(1000, 700);
-                              this.StartPosition = FormStartPosition.CenterParent;
+                              this.arboles = new List<NodoASTVisual>();
+                              this.Dock = DockStyle.Fill;
                               this.BackColor = Color.FromArgb(30, 30, 30);
-                              this.ShowIcon = false;
                               ConfigurarInterfaz();
+                    }
+
+                    public void ActualizarArboles(List<NodoASTVisual> nuevosArboles)
+                    {
+                              this.arboles = nuevosArboles;
+                              this.indiceActual = 0;
+                              ActualizarEstado();
+                              canvas?.Invalidate();
                     }
 
                     private void ConfigurarInterfaz()
                     {
-                              canvas = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(245, 245, 245) };
+                              canvas = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(9, 6, 22) }; // Fondo Nebula
+
                               canvas.Paint += (s, e) => DibujarArbol(e.Graphics);
                               this.MouseWheel += (s, e) =>
                               {
