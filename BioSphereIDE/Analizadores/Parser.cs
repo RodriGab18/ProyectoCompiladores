@@ -621,7 +621,7 @@ namespace BioSphereIDE.Analizadores
             Current.Lexeme is "<" or ">" or "<=" or ">=" or "==" or "!=";
 
         private static readonly HashSet<string> _units = new(StringComparer.Ordinal)
-            { "km", "m", "g", "kg", "atm", "ppm", "Sv", "h", "s", "mol", "K", "Pa" };
+            { "km", "m", "g", "kg", "atm", "ppm", "Sv", "h", "s", "mol", "K", "Pa", "km3", "m3" };
 
         private bool IsUnit() =>
             Current?.Type == TokenType.IDENTIFICADOR && _units.Contains(Current.Lexeme);

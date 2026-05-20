@@ -70,7 +70,7 @@ namespace BioSphereIDE.UI
             return page;
         }
 
-        private string GetInfoGeneral() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
+        internal static string GetInfoGeneral() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
 \b\fs24 ASTRA – Lenguaje para Simulación de Biosferas\b0\fs20\par
 \par
 \b ¿Qué es ASTRA?\b0\par
@@ -107,7 +107,7 @@ fin\f0\fs20\par
 Con ASTRA puedes simular desde un ecosistema simple hasta biosferas complejas con funciones definidas por el usuario, condicionales y bucles.\par
 }";
 
-        private string GetSintaxisBasica() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
+        internal static string GetSintaxisBasica() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
 \b\fs24 Sintaxis Básica de ASTRA\b0\fs20\par
 \par
 \b 1. Estructura general\b0\par
@@ -170,7 +170,7 @@ Ejemplo: \f1 temperatura = 25 °C;\f0\par
    de bloque */\f0\par
 }";
 
-        private string GetPalabrasReservadas() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
+        internal static string GetPalabrasReservadas() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
 \b\fs24 Palabras Reservadas de ASTRA\b0\fs20\par
 \par
 Estas palabras tienen un significado especial y \b no pueden usarse como identificadores\b0 (variables o funciones).\par
@@ -208,7 +208,7 @@ Fin\f0\fs20\par
 El analizador léxico trataría \f1 Inicio\f0, \f1 Simulacion\f0, \f1 Planeta\f0 y \f1 Fin\f0 como identificadores normales, lo que provocaría errores sintácticos porque se esperaban las palabras reservadas en minúsculas.\par
 }";
 
-        private string GetEjemplos() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
+        internal static string GetEjemplos() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
 \b\fs24 Ejemplos Completos en ASTRA\b0\fs20\par
 \par
 \b Ejemplo 1: Simulación básica con condicional\b0\par
@@ -300,43 +300,50 @@ fin\f0\fs20\par
     }
 
     // ==================================================================================
-    // EDITOR PRINCIPAL CON NUEVA INTERFAZ GRÁFICA (Properly Studio)
+    // EDITOR PRINCIPAL CON INTERFAZ UNIFICADA (Nebulosa + Pestañas Inferiores)
     // ==================================================================================
     public class BioSphereEditor : Form
     {
-        private System.Windows.Forms.Integration.ElementHost editorHost;
-        private ICSharpCode.AvalonEdit.TextEditor txtCodigo;
-        private SyntaxColorizer syntaxColorizer;
-        private CommentColorizer commentColorizer;
-        private ErrorSquiggleRenderer errorRenderer;
-        private System.Windows.Forms.Timer parseTimer;
-        private ToolTip errorToolTip;
+        private System.Windows.Forms.Integration.ElementHost editorHost = null!;
+        private ICSharpCode.AvalonEdit.TextEditor txtCodigo = null!;
+        private SyntaxColorizer syntaxColorizer = null!;
+        private CommentColorizer commentColorizer = null!;
+        private ErrorSquiggleRenderer errorRenderer = null!;
+        private System.Windows.Forms.Timer parseTimer = null!;
+        private ToolTip errorToolTip = null!;
         private List<ErrorInfo> currentErrors = new List<ErrorInfo>();
 
-        private DataGridView gridTokens;
-        private RichTextBox txtConsola;
-        private Button btnDocumentacion;
-        private Button btnArboles;
-        private CheckBox chkModoPrueba;
-        private Panel statusPanel;
-        private Label lblErrorCount;
-        private System.Windows.Forms.Timer errorTimer;
+        private DataGridView gridTokens = null!;
+        private RichTextBox txtConsola = null!;
+
+        // Pestañas UI (Tu diseño)
+        private Panel panelContenidoPestañas = null!;
+        private Panel btnTabCodigo = null!;
+        private Panel btnTabTokens = null!;
+        private Panel btnTabDocumentacion = null!;
+        private Panel panelCodigo = null!;
+        private Panel panelTokens = null!;
+        private Panel panelDocumentacion = null!;
+
+        private CheckBox chkModoPrueba = null!;
+        private Panel statusPanel = null!;
+        private Label lblErrorCount = null!;
+        private System.Windows.Forms.Timer errorTimer = null!;
 
         private NodoPrograma? ultimoAST;
 
-        // Paleta Properly Studio
-        private static readonly Color ColRichBlack = Color.FromArgb(2, 27, 26);
-        private static readonly Color ColDarkGreen = Color.FromArgb(3, 34, 33);
-        private static readonly Color ColBangladesh = Color.FromArgb(3, 98, 76);
-        private static readonly Color ColMeadow = Color.FromArgb(44, 194, 149);
-        private static readonly Color ColCaribbean = Color.FromArgb(0, 223, 129);
-        private static readonly Color ColAntiFlash = Color.FromArgb(241, 247, 246);
-        private static readonly Color ColPine = Color.FromArgb(6, 83, 43);
-        private static readonly Color ColBasil = Color.FromArgb(8, 69, 58);
-        private static readonly Color ColForest = Color.FromArgb(9, 85, 68);
-        private static readonly Color ColMint = Color.FromArgb(47, 169, 140);
-        private static readonly Color ColStone = Color.FromArgb(112, 125, 125);
-        private static readonly Color ColPistachio = Color.FromArgb(170, 203, 196);
+        // Paleta Nebulosa (Tus colores)
+        private static readonly Color ColRichBlack = Color.FromArgb(9, 6, 22);
+        private static readonly Color ColDarkGreen = Color.FromArgb(19, 14, 38);
+        private static readonly Color ColBangladesh = Color.FromArgb(30, 26, 69);
+        private static readonly Color ColMeadow = Color.FromArgb(255, 140, 46);
+        private static readonly Color ColCaribbean = Color.FromArgb(46, 230, 255);
+        private static readonly Color ColAntiFlash = Color.FromArgb(240, 244, 255);
+        private static readonly Color ColPine = Color.FromArgb(15, 12, 30);
+        private static readonly Color ColBasil = Color.FromArgb(25, 20, 50);
+        private static readonly Color ColForest = Color.FromArgb(230, 42, 77);
+        private static readonly Color ColStone = Color.FromArgb(162, 169, 196);
+        private static readonly Color ColPistachio = Color.FromArgb(211, 216, 239);
 
         public BioSphereEditor()
         {
@@ -348,15 +355,8 @@ fin\f0\fs20\par
             this.ForeColor = ColAntiFlash;
             this.DoubleBuffered = true;
 
-            // ═══════════════════════════════════════════════════════════════
-            // TOPBAR — Panel superior con degradado
-            // ═══════════════════════════════════════════════════════════════
-            Panel topPanel = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 64,
-                BackColor = ColDarkGreen
-            };
+            // ════════ TOPBAR ════════
+            Panel topPanel = new Panel { Dock = DockStyle.Top, Height = 64, BackColor = ColDarkGreen };
             topPanel.Paint += (s, e) =>
             {
                 using var brush = new System.Drawing.Drawing2D.LinearGradientBrush(
@@ -366,36 +366,11 @@ fin\f0\fs20\par
                 e.Graphics.DrawLine(pen, 0, topPanel.Height - 2, topPanel.Width, topPanel.Height - 2);
             };
 
-            // Logo
-            var lblTitle = new Label
-            {
-                Text = "ASTRA",
-                Font = new Font("Segoe UI", 18, FontStyle.Bold),
-                ForeColor = ColCaribbean,
-                Location = new Point(14, 10),
-                Size = new Size(135, 44),
-                AutoSize = false,
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            topPanel.Controls.Add(lblTitle);
-
-            var lblSub = new Label
-            {
-                Text = "IDE",
-                Font = new Font("Segoe UI", 8, FontStyle.Regular),
-                ForeColor = ColPistachio,
-                Location = new Point(116, 26),
-                Size = new Size(32, 18),
-                AutoSize = false,
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            topPanel.Controls.Add(lblSub);
-
-            // Separador
+            var lblTitle = new Label { Text = "ASTRA", Font = new Font("Segoe UI", 18, FontStyle.Bold), ForeColor = ColCaribbean, Location = new Point(14, 10), Size = new Size(135, 44), AutoSize = false, TextAlign = ContentAlignment.MiddleLeft };
+            var lblSub = new Label { Text = "IDE", Font = new Font("Segoe UI", 8, FontStyle.Regular), ForeColor = ColPistachio, Location = new Point(116, 26), Size = new Size(32, 18), AutoSize = false, TextAlign = ContentAlignment.MiddleLeft };
             var sep = new Panel { Location = new Point(152, 14), Size = new Size(2, 36), BackColor = ColBangladesh };
-            topPanel.Controls.Add(sep);
 
-            // Helper para botones de toolbar
+            // Botones de toolbar (herencia del colaborador)
             Button CrearBotonToolbar(string emoji, string tooltip, int x)
             {
                 var btn = new Button
@@ -418,86 +393,122 @@ fin\f0\fs20\par
                 return btn;
             }
 
-            btnArboles = CrearBotonToolbar("🌳", "Ver árbol sintáctico (AST)", 162);
-            btnDocumentacion = CrearBotonToolbar("📖", "Documentación del lenguaje", 210);
+            var btnArboles = CrearBotonToolbar("🌳", "Ver árbol sintáctico (AST)", 162);
+            var btnDocumentacion = CrearBotonToolbar("📖", "Documentación del lenguaje", 210);
 
-            chkModoPrueba = new CheckBox
-            {
-                Text = "  Modo Prueba",
-                ForeColor = ColPistachio,
-                Font = new Font("Segoe UI", 10),
-                Location = new Point(268, 20),
-                AutoSize = true,
-                Checked = false
-            };
-            topPanel.Controls.Add(chkModoPrueba);
+            chkModoPrueba = new CheckBox { Text = "  Modo Prueba", ForeColor = ColPistachio, Font = new Font("Segoe UI", 10), Location = new Point(268, 20), AutoSize = true, Checked = false };
+            chkModoPrueba.CheckedChanged += ChkModoPrueba_CheckedChanged;
+
+            topPanel.Controls.Add(lblTitle); topPanel.Controls.Add(lblSub); topPanel.Controls.Add(sep); topPanel.Controls.Add(chkModoPrueba);
 
             btnArboles.Click += BtnArboles_Click;
             btnDocumentacion.Click += BtnDocumentacion_Click;
-            chkModoPrueba.CheckedChanged += ChkModoPrueba_CheckedChanged;
 
-            // ═══════════════════════════════════════════════════════════════
-            // STATUSBAR
-            // ═══════════════════════════════════════════════════════════════
-            statusPanel = new Panel
-            {
-                Dock = DockStyle.Bottom,
-                Height = 28,
-                BackColor = ColPine
-            };
+            // ════════ STATUSBAR ════════
+            statusPanel = new Panel { Dock = DockStyle.Bottom, Height = 28, BackColor = ColPine };
             statusPanel.Paint += (s, e) =>
             {
-                using var brush = new System.Drawing.Drawing2D.LinearGradientBrush(
-                    statusPanel.ClientRectangle, ColPine, ColBasil, System.Drawing.Drawing2D.LinearGradientMode.Horizontal);
+                using var brush = new System.Drawing.Drawing2D.LinearGradientBrush(statusPanel.ClientRectangle, ColPine, ColBasil, System.Drawing.Drawing2D.LinearGradientMode.Horizontal);
                 e.Graphics.FillRectangle(brush, statusPanel.ClientRectangle);
                 using var pen = new Pen(ColBangladesh, 1);
                 e.Graphics.DrawLine(pen, 0, 0, statusPanel.Width, 0);
             };
+            lblErrorCount = new Label { Text = "●  Sin errores", ForeColor = ColCaribbean, Font = new Font("Segoe UI", 9, FontStyle.Regular), Location = new Point(12, 6), AutoSize = true };
+            var lblVersion = new Label { Text = "ASTRA DSL v1.0 — Compiladores", ForeColor = ColStone, Font = new Font("Segoe UI", 8), Dock = DockStyle.Right, TextAlign = ContentAlignment.MiddleRight, Padding = new Padding(0, 0, 12, 0), AutoSize = true };
+            statusPanel.Controls.Add(lblErrorCount); statusPanel.Controls.Add(lblVersion);
 
-            lblErrorCount = new Label
-            {
-                Text = "●  Sin errores",
-                ForeColor = ColCaribbean,
-                Font = new Font("Segoe UI", 9, FontStyle.Regular),
-                Location = new Point(12, 6),
-                AutoSize = true
+            // ════════ SPLIT PRINCIPAL ════════
+            var mainSplit = new SplitContainer { Dock = DockStyle.Fill, SplitterDistance = 750, Orientation = Orientation.Vertical, BackColor = ColRichBlack, SplitterWidth = 6 };
+
+            // == PANEL DERECHO: Simulación (Arriba) + Consola (Abajo) ==
+            var rightSplit = new SplitContainer 
+            { 
+                Dock = DockStyle.Fill, 
+                Orientation = Orientation.Horizontal, 
+                FixedPanel = FixedPanel.Panel2, // Mantiene la consola (abajo) fija al redimensionar, el planeta crece
+                BackColor = ColRichBlack, 
+                SplitterWidth = 6 
             };
 
-            var lblVersion = new Label
+            // Simulación (Planeta)
+            var simulacionRightPanel = new Panel { Dock = DockStyle.Fill, BackColor = ColRichBlack, Padding = new Padding(8) };
+            var simRightInner = new Panel { Dock = DockStyle.Fill, BackColor = ColDarkGreen };
+            AplicarBordesRedondeados(simRightInner, 15, ColDarkGreen);
+            simRightInner.Controls.Add(new Label { Text = "Área reservada para integración con motor 3D", ForeColor = ColStone, Font = new Font("Segoe UI", 12, FontStyle.Italic), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter });
+            simRightInner.Controls.Add(new Label { Text = "  ◈  simulación de biósfera", ForeColor = ColMeadow, Font = new Font("Consolas", 10, FontStyle.Bold), Dock = DockStyle.Top, Height = 35, TextAlign = ContentAlignment.MiddleLeft });
+            simulacionRightPanel.Controls.Add(simRightInner);
+
+            // Consola
+            var consolaPanel = new Panel { Dock = DockStyle.Fill, BackColor = ColRichBlack, Padding = new Padding(8) };
+            var consolaInner = new Panel { Dock = DockStyle.Fill, BackColor = ColDarkGreen };
+            AplicarBordesRedondeados(consolaInner, 15, ColDarkGreen);
+            txtConsola = new RichTextBox { Dock = DockStyle.Fill, Font = new Font("Consolas", 10), BackColor = ColDarkGreen, ForeColor = ColAntiFlash, ReadOnly = true, BorderStyle = BorderStyle.None };
+            var consolaTxtContainer = new Panel { Dock = DockStyle.Fill, Padding = new Padding(15, 0, 15, 15) };
+            consolaTxtContainer.Controls.Add(txtConsola);
+            consolaInner.Controls.Add(consolaTxtContainer);
+            consolaInner.Controls.Add(new Label { Text = "  ◈  consola de salida", ForeColor = ColMeadow, Font = new Font("Consolas", 10, FontStyle.Bold), Dock = DockStyle.Top, Height = 35, TextAlign = ContentAlignment.MiddleLeft });
+            consolaPanel.Controls.Add(consolaInner);
+
+            rightSplit.Panel1.Controls.Add(simulacionRightPanel);
+            rightSplit.Panel2.Controls.Add(consolaPanel);
+
+            // == PANEL IZQUIERDO: Pestañas inferiores (Tu diseño) ==
+            // Reemplaza TODA la sección "== PANEL IZQUIERDO: Pestañas inferiores (Tu diseño) =="
+            // en el constructor de BioSphereEditor con este código:
+
+            // == PANEL IZQUIERDO: Pestañas inferiores (CORREGIDO) ==
+            var leftPanel = new Panel { Dock = DockStyle.Fill, BackColor = ColRichBlack, Padding = new Padding(0) };
+
+            // Barra de pestañas en el borde INFERIOR
+            var tabsHeaderPanel = new FlowLayoutPanel
             {
-                Text = "ASTRA DSL  v1.0  —  Compiladores",
-                ForeColor = ColStone,
-                Font = new Font("Segoe UI", 8),
-                Dock = DockStyle.Right,
-                TextAlign = ContentAlignment.MiddleRight,
-                Padding = new Padding(0, 0, 12, 0),
-                AutoSize = true
+                Dock = DockStyle.Bottom,
+                Height = 45,
+                BackColor = ColRichBlack,
+                WrapContents = false,
+                Padding = new Padding(10, 0, 0, 0),
+                Margin = new Padding(0)
             };
 
-            statusPanel.Controls.Add(lblErrorCount);
-            statusPanel.Controls.Add(lblVersion);
-
-            // ═══════════════════════════════════════════════════════════════
-            // SPLIT PRINCIPAL
-            // ═══════════════════════════════════════════════════════════════
-            var mainSplit = new SplitContainer
+            // Panel de contenido con padding ajustado
+            panelContenidoPestañas = new Panel
             {
                 Dock = DockStyle.Fill,
-                SplitterDistance = 550, // Reservamos 550px para el editor de código
-                Orientation = Orientation.Vertical, // Divide Izquierda y Derecha
-                BackColor = ColDarkGreen,
-                SplitterWidth = 3
+                BackColor = ColRichBlack,
+                Padding = new Padding(10, 10, 10, 0),
+                Margin = new Padding(0)
             };
 
-            // ── PANEL IZQUIERDO: Editor ─────────────────────────────────────
-            var leftPanel = new Panel { Dock = DockStyle.Fill, BackColor = ColRichBlack };
+            var contenidoInner = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = ColDarkGreen,
+                Margin = new Padding(0)
+            };
+            AplicarBordesRedondeados(contenidoInner, 15, ColDarkGreen);
+            panelContenidoPestañas.Controls.Add(contenidoInner);
 
-            var editorHeader = new Panel { Dock = DockStyle.Top, Height = 32, BackColor = ColDarkGreen };
-            editorHeader.Paint += (s, e) =>
+            // ✅ CORRECTO: Dock.Fill primero (para z-order correcto), luego Dock.Bottom
+            leftPanel.Controls.Add(panelContenidoPestañas); // Fill
+            leftPanel.Controls.Add(tabsHeaderPanel);          // Bottom
+
+            // Pestaña 1: Código (con header CORREGIDO)
+            panelCodigo = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0), Margin = new Padding(0) };
+
+            // Header del editor (Dock Top, no tapa el código)
+            var editorHeaderPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 32,
+                BackColor = ColDarkGreen,
+                Margin = new Padding(0)
+            };
+            editorHeaderPanel.Paint += (s, e) =>
             {
                 using var brush = new System.Drawing.Drawing2D.LinearGradientBrush(
-                    editorHeader.ClientRectangle, ColDarkGreen, ColRichBlack, System.Drawing.Drawing2D.LinearGradientMode.Vertical);
-                e.Graphics.FillRectangle(brush, editorHeader.ClientRectangle);
+                    editorHeaderPanel.ClientRectangle, ColDarkGreen, ColRichBlack,
+                    System.Drawing.Drawing2D.LinearGradientMode.Vertical);
+                e.Graphics.FillRectangle(brush, editorHeaderPanel.ClientRectangle);
             };
             var lblEditorTab = new Label
             {
@@ -505,84 +516,59 @@ fin\f0\fs20\par
                 ForeColor = ColMeadow,
                 Font = new Font("Consolas", 9, FontStyle.Regular),
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(0)
             };
-            editorHeader.Controls.Add(lblEditorTab);
+            editorHeaderPanel.Controls.Add(lblEditorTab);
 
-            // AvalonEdit
-            editorHost = new System.Windows.Forms.Integration.ElementHost { Dock = DockStyle.Fill };
+            // AvalonEdit (Dock Fill después del header)
+            editorHost = new System.Windows.Forms.Integration.ElementHost
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0)
+            };
+
             txtCodigo = new ICSharpCode.AvalonEdit.TextEditor
             {
                 FontFamily = new System.Windows.Media.FontFamily("Consolas"),
                 FontSize = 14,
                 ShowLineNumbers = true,
-                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(2, 27, 26)),
-                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(241, 247, 246))
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(19, 14, 38)),
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(240, 244, 255)),
+                Padding = new System.Windows.Thickness(0) // Sin padding para no perder líneas
             };
-            txtCodigo.TextArea.TextView.CurrentLineBackground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(30, 44, 194, 149));
-            txtCodigo.TextArea.TextView.CurrentLineBorder = new System.Windows.Media.Pen(new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(60, 0, 223, 129)), 1);
+            txtCodigo.TextArea.TextView.CurrentLineBackground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(30, 46, 230, 255));
+            txtCodigo.TextArea.TextView.CurrentLineBorder = new System.Windows.Media.Pen(new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(60, 45, 123, 255)), 1);
 
             syntaxColorizer = new SyntaxColorizer();
             commentColorizer = new CommentColorizer();
             txtCodigo.TextArea.TextView.LineTransformers.Add(syntaxColorizer);
             txtCodigo.TextArea.TextView.LineTransformers.Add(commentColorizer);
-
             errorRenderer = new ErrorSquiggleRenderer(txtCodigo);
             txtCodigo.TextArea.TextView.BackgroundRenderers.Add(errorRenderer);
 
             parseTimer = new System.Windows.Forms.Timer { Interval = 600 };
             parseTimer.Tick += ParseTimer_Tick;
             txtCodigo.TextChanged += (s, e) => { parseTimer.Stop(); parseTimer.Start(); };
-
             errorToolTip = new ToolTip
             {
                 AutoPopDelay = 8000,
                 InitialDelay = 0,
                 ReshowDelay = 0,
                 ShowAlways = true,
-                BackColor = Color.FromArgb(3, 34, 33),
-                ForeColor = Color.FromArgb(255, 100, 100)
+                BackColor = Color.FromArgb(230, 42, 77),
+                ForeColor = Color.FromArgb(255, 255, 255)
             };
             txtCodigo.TextArea.TextView.MouseHover += TextView_MouseHover;
             txtCodigo.TextArea.TextView.MouseHoverStopped += TextView_MouseHoverStopped;
-
             editorHost.Child = txtCodigo;
 
-            // Ensamblaje Panel Izquierdo
-            leftPanel.Controls.Add(editorHost);
-            leftPanel.Controls.Add(editorHeader);
-            editorHeader.BringToFront(); // Evita superposiciones del editor
+            // ✅ CORRECTO: Dock.Fill primero (para z-order correcto), luego Dock.Top
+            panelCodigo.Controls.Add(editorHost);         // Fill
+            panelCodigo.Controls.Add(editorHeaderPanel);  // Top
 
-            // ── PANEL DERECHO: Tokens + Consola + Simulación ─────────────────
-            var rightSplitTop = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = 150, // Fijo a 150px para tokens
-                BackColor = ColDarkGreen,
-                SplitterWidth = 3
-            };
-
-            var rightSplitBottom = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = 150, // Fijo a 150px para consola
-                BackColor = ColDarkGreen,
-                SplitterWidth = 3
-            };
-
-            // == 1. SECCIÓN TOKENS ==
-            var tokensPanel = new Panel { Dock = DockStyle.Fill, BackColor = ColRichBlack };
-            var tokensHeader = new Panel { Dock = DockStyle.Top, Height = 30, BackColor = ColDarkGreen };
-            tokensHeader.Paint += (s, e) =>
-            {
-                using var brush = new System.Drawing.Drawing2D.LinearGradientBrush(tokensHeader.ClientRectangle, ColBangladesh, ColDarkGreen, System.Drawing.Drawing2D.LinearGradientMode.Horizontal);
-                e.Graphics.FillRectangle(brush, tokensHeader.ClientRectangle);
-            };
-            var lblTokensTab = new Label { Text = "  ◈  tokens", ForeColor = ColMeadow, Font = new Font("Consolas", 9), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-            tokensHeader.Controls.Add(lblTokensTab);
-
+            // Pestaña 2: Tokens
+            panelTokens = new Panel { Dock = DockStyle.Fill, Padding = new Padding(15) };
             gridTokens = new DataGridView
             {
                 Dock = DockStyle.Fill,
@@ -591,92 +577,244 @@ fin\f0\fs20\par
                 AllowUserToAddRows = false,
                 RowHeadersVisible = false,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor = ColRichBlack,
-                GridColor = ColDarkGreen,
+                BackgroundColor = ColDarkGreen,
+                GridColor = ColBangladesh,
                 BorderStyle = BorderStyle.None,
                 Font = new Font("Consolas", 9),
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                DefaultCellStyle = { BackColor = ColRichBlack, ForeColor = ColAntiFlash, SelectionBackColor = ColForest, SelectionForeColor = ColCaribbean, Font = new Font("Consolas", 9) },
-                ColumnHeadersDefaultCellStyle = { BackColor = ColDarkGreen, ForeColor = ColMeadow, Font = new Font("Segoe UI", 9, FontStyle.Bold), SelectionBackColor = ColDarkGreen },
+                DefaultCellStyle = { BackColor = ColDarkGreen, ForeColor = ColAntiFlash, SelectionBackColor = ColForest, SelectionForeColor = ColCaribbean, Font = new Font("Consolas", 9) },
+                ColumnHeadersDefaultCellStyle = { BackColor = ColBangladesh, ForeColor = ColMeadow, Font = new Font("Segoe UI", 9, FontStyle.Bold), SelectionBackColor = ColBangladesh },
                 EnableHeadersVisualStyles = false,
-                AlternatingRowsDefaultCellStyle = { BackColor = ColDarkGreen, ForeColor = ColAntiFlash, SelectionBackColor = ColForest, SelectionForeColor = ColCaribbean }
+                AlternatingRowsDefaultCellStyle = { BackColor = ColBangladesh, ForeColor = ColAntiFlash, SelectionBackColor = ColForest, SelectionForeColor = ColCaribbean }
             };
             gridTokens.Columns[0].Name = "Tipo"; gridTokens.Columns[1].Name = "Lexema";
             gridTokens.Columns[2].Name = "Línea"; gridTokens.Columns[3].Name = "Columna";
             gridTokens.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
             gridTokens.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+            panelTokens.Controls.Add(gridTokens);
 
-            tokensPanel.Controls.Add(gridTokens);
-            tokensPanel.Controls.Add(tokensHeader);
+            // Pestaña 3: Documentación
+            panelDocumentacion = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12), BackColor = ColRichBlack };
+            
+            Panel docInner = new Panel { Dock = DockStyle.Fill, BackColor = ColDarkGreen };
+            AplicarBordesRedondeados(docInner, 12, ColDarkGreen);
 
-            // == 2. SECCIÓN CONSOLA ==
-            var consolaPanel = new Panel { Dock = DockStyle.Fill, BackColor = ColRichBlack };
-            var consolaHeader = new Panel { Dock = DockStyle.Top, Height = 30, BackColor = ColDarkGreen };
-            consolaHeader.Paint += (s, e) =>
+            FlowLayoutPanel docHeader = new FlowLayoutPanel
             {
-                using var brush = new System.Drawing.Drawing2D.LinearGradientBrush(consolaHeader.ClientRectangle, ColBangladesh, ColDarkGreen, System.Drawing.Drawing2D.LinearGradientMode.Horizontal);
-                e.Graphics.FillRectangle(brush, consolaHeader.ClientRectangle);
+                Dock = DockStyle.Top,
+                Height = 36,
+                BackColor = ColDarkGreen,
+                Padding = new Padding(5, 5, 5, 0),
+                WrapContents = false
             };
-            var lblConsolaTab = new Label { Text = "  ◈  consola de salida", ForeColor = ColMeadow, Font = new Font("Consolas", 9), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-            consolaHeader.Controls.Add(lblConsolaTab);
 
-            txtConsola = new RichTextBox
+            Panel docContainer = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12), BackColor = ColDarkGreen };
+
+            RichTextBox rtb1 = new RichTextBox { Dock = DockStyle.Fill, Rtf = FrmDocumentacion.GetInfoGeneral(), ReadOnly = true, BorderStyle = BorderStyle.None, BackColor = ColDarkGreen, ForeColor = ColAntiFlash };
+            RichTextBox rtb2 = new RichTextBox { Dock = DockStyle.Fill, Rtf = FrmDocumentacion.GetSintaxisBasica(), ReadOnly = true, BorderStyle = BorderStyle.None, BackColor = ColDarkGreen, ForeColor = ColAntiFlash, Visible = false };
+            RichTextBox rtb3 = new RichTextBox { Dock = DockStyle.Fill, Rtf = FrmDocumentacion.GetPalabrasReservadas(), ReadOnly = true, BorderStyle = BorderStyle.None, BackColor = ColDarkGreen, ForeColor = ColAntiFlash, Visible = false };
+            RichTextBox rtb4 = new RichTextBox { Dock = DockStyle.Fill, Rtf = FrmDocumentacion.GetEjemplos(), ReadOnly = true, BorderStyle = BorderStyle.None, BackColor = ColDarkGreen, ForeColor = ColAntiFlash, Visible = false };
+
+            docContainer.Controls.Add(rtb1);
+            docContainer.Controls.Add(rtb2);
+            docContainer.Controls.Add(rtb3);
+            docContainer.Controls.Add(rtb4);
+
+            docInner.Controls.Add(docContainer);
+            docInner.Controls.Add(docHeader);
+            panelDocumentacion.Controls.Add(docInner);
+
+            Panel? docBotonActivo = null;
+
+            Panel CrearBotonDocTab(string label, RichTextBox target)
             {
-                Dock = DockStyle.Fill,
-                Font = new Font("Consolas", 10),
-                BackColor = ColRichBlack,
-                ForeColor = ColAntiFlash,
-                ReadOnly = true,
-                BorderStyle = BorderStyle.None,
-                Padding = new Padding(8)
-            };
-            consolaPanel.Controls.Add(txtConsola);
-            consolaPanel.Controls.Add(consolaHeader);
+                Panel btn = new Panel { Height = 26, Width = 140, BackColor = ColRichBlack, Cursor = Cursors.Hand, Margin = new Padding(0, 0, 6, 0) };
+                btn.Paint += (s, e) =>
+                {
+                    Graphics g = e.Graphics;
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    bool active = (docBotonActivo == btn);
+                    Color bg = active ? ColBangladesh : ColRichBlack;
+                    Color fg = active ? ColAntiFlash : ColStone;
+                    using (SolidBrush b = new SolidBrush(bg))
+                    {
+                        g.FillRoundRectangle(b, new RectangleF(0, 0, btn.Width, btn.Height), 6);
+                    }
+                    TextRenderer.DrawText(g, label, new Font("Segoe UI", 9, FontStyle.Bold), btn.ClientRectangle, fg,
+                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                };
+                btn.Click += (s, e) =>
+                {
+                    docBotonActivo = btn;
+                    foreach (Control ctrl in docHeader.Controls) ctrl.Invalidate();
+                    
+                    rtb1.Visible = (target == rtb1);
+                    rtb2.Visible = (target == rtb2);
+                    rtb3.Visible = (target == rtb3);
+                    rtb4.Visible = (target == rtb4);
+                };
+                return btn;
+            }
 
-            // == 3. NUEVA SECCIÓN SIMULACIÓN ==
-            var simulacionPanel = new Panel { Dock = DockStyle.Fill, BackColor = ColRichBlack };
-            var simulacionHeader = new Panel { Dock = DockStyle.Top, Height = 30, BackColor = ColDarkGreen };
-            simulacionHeader.Paint += (s, e) =>
+            Panel btn1 = CrearBotonDocTab("1. Introducción", rtb1);
+            Panel btn2 = CrearBotonDocTab("2. Sintaxis", rtb2);
+            Panel btn3 = CrearBotonDocTab("3. Palabras", rtb3);
+            Panel btn4 = CrearBotonDocTab("4. Ejemplos", rtb4);
+
+            docBotonActivo = btn1;
+
+            docHeader.Controls.Add(btn1);
+            docHeader.Controls.Add(btn2);
+            docHeader.Controls.Add(btn3);
+            docHeader.Controls.Add(btn4);
+
+            // Agregar paneles al contenido
+            contenidoInner.Controls.Add(panelCodigo);
+            contenidoInner.Controls.Add(panelTokens);
+            contenidoInner.Controls.Add(panelDocumentacion);
+
+            // Crear botones de pestañas
+            btnTabCodigo = CrearBotonTab("💻 Código", panelCodigo);
+            btnTabTokens = CrearBotonTab("🔍 Tokens", panelTokens);
+            btnTabDocumentacion = CrearBotonTab("📖 Documentación", panelDocumentacion);
+
+            tabsHeaderPanel.Controls.Add(btnTabCodigo);
+            tabsHeaderPanel.Controls.Add(btnTabTokens);
+            tabsHeaderPanel.Controls.Add(btnTabDocumentacion);
+
+            // Activar pestaña inicial y forzar repintado
+            ActivarTab(btnTabCodigo, panelCodigo);
+
+            // ⚡ FORZAR REPINTADO COMPLETO DEL LAYOUT
+            this.Load += (s, e) =>
             {
-                using var brush = new System.Drawing.Drawing2D.LinearGradientBrush(simulacionHeader.ClientRectangle, ColBangladesh, ColDarkGreen, System.Drawing.Drawing2D.LinearGradientMode.Horizontal);
-                e.Graphics.FillRectangle(brush, simulacionHeader.ClientRectangle);
+                leftPanel.PerformLayout();
+                panelContenidoPestañas.PerformLayout();
+                contenidoInner.PerformLayout();
+                tabsHeaderPanel.PerformLayout();
+                this.PerformLayout();
+                
+                // Asegurar que la consola solo sobresalga un poco (~220px) en la parte inferior
+                if (rightSplit.Height > 250)
+                {
+                    rightSplit.SplitterDistance = rightSplit.Height - 220;
+                }
             };
-            var lblSimulacionTab = new Label { Text = "  ◈  simulación de biósfera", ForeColor = ColMeadow, Font = new Font("Consolas", 9), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
-            simulacionHeader.Controls.Add(lblSimulacionTab);
-
-            var lblPlaceholder = new Label
-            {
-                Text = "Área reservada para integración con motor 3D",
-                ForeColor = ColStone,
-                Font = new Font("Segoe UI", 12, FontStyle.Italic),
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleCenter
-            };
-            simulacionPanel.Controls.Add(lblPlaceholder);
-            simulacionPanel.Controls.Add(simulacionHeader);
-
-            // == ENSAMBLAJE FINAL DE TODOS LOS PANELES ==
-            rightSplitBottom.Panel1.Controls.Add(consolaPanel);
-            rightSplitBottom.Panel2.Controls.Add(simulacionPanel);
-
-            rightSplitTop.Panel1.Controls.Add(tokensPanel);
-            rightSplitTop.Panel2.Controls.Add(rightSplitBottom);
 
             mainSplit.Panel1.Controls.Add(leftPanel);
-            mainSplit.Panel2.Controls.Add(rightSplitTop);
+            mainSplit.Panel2.Controls.Add(rightSplit);
 
-            // Orden correcto para Dock en WinForms: Top/Bottom primero, Fill SIEMPRE último.
-            // Así el layout engine ya tiene reservado el espacio de top/bottom
-            // antes de que el control Fill reclame el resto.
-            this.Controls.Add(topPanel);    // Dock Top  — primero
-            this.Controls.Add(statusPanel); // Dock Bottom — segundo
-            this.Controls.Add(mainSplit);   // Dock Fill  — ÚLTIMO (siempre)
+            // ════════ CONFIGURACIÓN DE SPLITTERS ════════
+            mainSplit.Paint += (s, e) => { e.Graphics.FillRectangle(new SolidBrush(ColRichBlack), mainSplit.SplitterRectangle); };
+            rightSplit.Paint += (s, e) => { e.Graphics.FillRectangle(new SolidBrush(ColRichBlack), rightSplit.SplitterRectangle); };
+            mainSplit.SplitterMoved += (s, e) => mainSplit.Invalidate();
+            rightSplit.SplitterMoved += (s, e) => rightSplit.Invalidate();
+
+            // ════════ AGREGAR CONTROLES AL FORMULARIO ════════
+            // En WinForms, el control Dock.Fill debe agregarse PRIMERO al contenedor
+            // para que ocupe el espacio restante sin superponerse a los controles Dock.Top/Bottom.
+            this.Controls.Add(mainSplit);     // Dock Fill
+            this.Controls.Add(statusPanel);   // Dock Bottom
+            this.Controls.Add(topPanel);      // Dock Top
 
             CargarCodigoCorrecto();
 
             errorTimer = new System.Windows.Forms.Timer { Interval = 600 };
             errorTimer.Tick += (s, e) => ActualizarContadorErrores();
             errorTimer.Start();
+        }
+
+        // ==================== MÉTODOS DE INTERFAZ (Tu diseño de pestañas) ====================
+
+        private Panel CrearBotonTab(string texto, Panel targetPanel)
+        {
+            var btn = new Panel
+            {
+                Text = texto,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Size = new Size(175, 44),
+                BackColor = ColRichBlack,
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 0, 4, 0),
+                MinimumSize = new Size(175, 44),
+                MaximumSize = new Size(175, 44) // Tamaño fijo para evitar deformaciones
+            };
+
+            btn.Paint += (s, e) =>
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+                // Limpiar fondo
+                using (var clearBrush = new SolidBrush(ColRichBlack))
+                    g.FillRectangle(clearBrush, btn.ClientRectangle);
+
+                bool isActive = btn.BackColor == ColDarkGreen;
+                Color tabBg = isActive ? ColDarkGreen : Color.FromArgb(22, 17, 45);
+                Color textCol = isActive ? ColAntiFlash : ColStone;
+
+                int r = 12;
+                int w = btn.Width - 1;
+                int h = btn.Height - 1;
+
+                using var path = new System.Drawing.Drawing2D.GraphicsPath();
+                path.AddLine(0, 0, w, 0);
+                path.AddArc(w - r * 2, h - r * 2, r * 2, r * 2, 0, 90);
+                path.AddArc(0, h - r * 2, r * 2, r * 2, 90, 90);
+                path.CloseFigure();
+
+                using var brush = new SolidBrush(tabBg);
+                g.FillPath(brush, path);
+
+                if (isActive)
+                {
+                    using var accentPen = new Pen(ColCaribbean, 2.5f);
+                    g.DrawLine(accentPen, r + 1, h, w - r - 1, h);
+                }
+
+                TextRenderer.DrawText(g, btn.Text, btn.Font, new Rectangle(0, 0, w, h), textCol,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            };
+
+            btn.Click += (s, e) => ActivarTab(btn, targetPanel);
+            return btn;
+        }
+
+        private void ActivarTab(Panel botonActivo, Panel panelActivo)
+        {
+            if (botonActivo.Parent != null)
+            {
+                foreach (Control c in botonActivo.Parent.Controls)
+                    if (c is Panel p && p != botonActivo) { p.BackColor = ColRichBlack; p.Invalidate(); }
+            }
+
+            botonActivo.BackColor = ColDarkGreen;
+            botonActivo.Invalidate();
+
+            panelCodigo.Visible = false;
+            panelTokens.Visible = false;
+            panelDocumentacion.Visible = false;
+
+            panelActivo.Visible = true;
+            panelActivo.BringToFront();
+        }
+
+        private TabPage CrearPaginaRtfInterna(string titulo, string rtfContent)
+        {
+            TabPage page = new TabPage(titulo) { BackColor = ColDarkGreen };
+            RichTextBox rtb = new RichTextBox { Dock = DockStyle.Fill, Rtf = rtfContent, ReadOnly = true, BorderStyle = BorderStyle.None, BackColor = ColDarkGreen, ForeColor = ColAntiFlash, Padding = new Padding(20) };
+            page.Controls.Add(rtb);
+            return page;
+        }
+
+        private void AplicarBordesRedondeados(Control ctrl, int radius, Color backColor)
+        {
+            ctrl.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                using var brush = new SolidBrush(backColor);
+                e.Graphics.FillRoundRectangle(brush, new RectangleF(0, 0, ctrl.Width, ctrl.Height), radius);
+            };
         }
 
         // ==================== MÉTODOS Y LOGICA DE EVENTOS ====================
@@ -695,14 +833,12 @@ fin\f0\fs20\par
             parseTimer.Stop();
             try
             {
-                // ── FASE 1: Léxico ──────────────────────────────────────────
                 Lexer lexer = new Lexer(txtCodigo.Text);
                 var tokens = lexer.Tokenize();
                 var erroresLexicos = lexer.Errores ?? new List<ErrorInfo>();
 
                 syntaxColorizer.UpdateTokens(tokens);
 
-                // Actualizar tabla de tokens
                 gridTokens.Rows.Clear();
                 foreach (var token in tokens)
                 {
@@ -724,7 +860,6 @@ fin\f0\fs20\par
                     return;
                 }
 
-                // ── FASE 2: Sintáctico ──────────────────────────────────────
                 var parser = new Parser(tokens);
                 var (programa, erroresSintacticos) = parser.ParsePrograma();
 
@@ -740,11 +875,10 @@ fin\f0\fs20\par
 
                 ultimoAST = programa;
 
-                // ── FASE 3: Semántico ───────────────────────────────────────
                 var semantic = new SemanticAnalyzer();
                 var (semSuccess, semanticErrors) = semantic.Analyze(programa!);
 
-                var errores      = semanticErrors.Where(e => e.Severity == BioSphereIDE.Core.Severity.Error).ToList();
+                var errores = semanticErrors.Where(e => e.Severity == BioSphereIDE.Core.Severity.Error).ToList();
                 var advertencias = semanticErrors.Where(e => e.Severity == BioSphereIDE.Core.Severity.Warning).ToList();
 
                 if (errores.Count > 0)
@@ -757,7 +891,6 @@ fin\f0\fs20\par
                     return;
                 }
 
-                // ── TODO CORRECTO ───────────────────────────────────────────
                 currentErrors = new List<ErrorInfo>();
                 errorRenderer.UpdateErrors(currentErrors);
                 txtCodigo.TextArea.TextView.Redraw();
@@ -765,16 +898,16 @@ fin\f0\fs20\par
                 txtConsola.SelectionColor = ColMeadow;
                 txtConsola.AppendText("══════════════════════════════════════\n");
                 txtConsola.SelectionColor = ColCaribbean;
-                txtConsola.AppendText("  COMPILACION EXITOSA\n");
+                txtConsola.AppendText("  ✅ COMPILACIÓN EXITOSA\n");
                 txtConsola.SelectionColor = ColPistachio;
-                txtConsola.AppendText("  Lexico OK  |  Sintactico OK  |  Semantico OK\n");
+                txtConsola.AppendText("  Léxico ✓  │  Sintáctico ✓  │  Semántico ✓\n");
                 txtConsola.SelectionColor = ColMeadow;
                 txtConsola.AppendText("══════════════════════════════════════\n\n");
 
                 if (advertencias.Count > 0) MostrarAdvertencias(advertencias);
 
                 txtConsola.SelectionColor = ColMeadow;
-                txtConsola.AppendText("ARBOL SINTACTICO:\n\n");
+                txtConsola.AppendText("📖 ÁRBOL SINTÁCTICO:\n\n");
                 txtConsola.SelectionColor = ColAntiFlash;
                 txtConsola.AppendText(programa!.ToTreeString("", true));
             }
@@ -784,14 +917,14 @@ fin\f0\fs20\par
         private void MostrarErrores(string fase, List<ErrorInfo> errores)
         {
             txtConsola.SelectionColor = Color.FromArgb(255, 80, 60);
-            txtConsola.AppendText($"ERROR {fase} — {errores.Count} error(es)\n");
+            txtConsola.AppendText($"❌ ERROR {fase} — {errores.Count} error(es)\n");
             txtConsola.SelectionColor = ColMeadow;
             txtConsola.AppendText("──────────────────────────────────────\n");
             foreach (var err in errores)
             {
                 string code = string.IsNullOrEmpty(err.Code) ? "" : $"[{err.Code}] ";
                 txtConsola.SelectionColor = Color.FromArgb(255, 130, 100);
-                txtConsola.AppendText($"  L{err.Line}:{err.Column}  {code}{err.Message}\n");
+                txtConsola.AppendText($"  • Línea {err.Line}, Col {err.Column}: {code}{err.Message}\n");
                 if (!string.IsNullOrEmpty(err.Suggestion))
                 {
                     txtConsola.SelectionColor = ColPistachio;
@@ -804,12 +937,12 @@ fin\f0\fs20\par
         private void MostrarAdvertencias(List<ErrorInfo> warns)
         {
             txtConsola.SelectionColor = Color.FromArgb(255, 200, 80);
-            txtConsola.AppendText($"ADVERTENCIAS — {warns.Count} advertencia(s)\n");
+            txtConsola.AppendText($"⚠️ ADVERTENCIAS — {warns.Count} advertencia(s)\n");
             foreach (var w in warns)
             {
                 string code = string.IsNullOrEmpty(w.Code) ? "" : $"[{w.Code}] ";
                 txtConsola.SelectionColor = Color.FromArgb(255, 220, 120);
-                txtConsola.AppendText($"  L{w.Line}:{w.Column}  {code}{w.Message}\n");
+                txtConsola.AppendText($"  • Línea {w.Line}, Col {w.Column}: {code}{w.Message}\n");
                 if (!string.IsNullOrEmpty(w.Suggestion))
                 {
                     txtConsola.SelectionColor = ColPistachio;
@@ -838,7 +971,7 @@ fin\f0\fs20\par
                 {
                     string code = string.IsNullOrEmpty(found.Code) ? "" : $"[{found.Code}]  ";
                     string sugg = string.IsNullOrEmpty(found.Suggestion) ? "" : $"\n→ {found.Suggestion}";
-                    string msg  = $"L{found.Line}:{found.Column}  {code}{found.Message}{sugg}";
+                    string msg = $"L{found.Line}:{found.Column}  {code}{found.Message}{sugg}";
                     var winPos = e.GetPosition(txtCodigo);
                     var formPos = editorHost.PointToScreen(new Point((int)winPos.X, (int)winPos.Y));
                     var clientPos = this.PointToClient(formPos);
@@ -855,16 +988,14 @@ fin\f0\fs20\par
 
         private void CargarCodigoCorrecto()
         {
-            txtCodigo.Text =
-@"
-inicio
+            txtCodigo.Text = @"inicio
 simulacion {
 
     // ── Variables globales de simulación ──────────────
     ciclos    = 0;
     habitables = 0;
-     masa=0;
-    co2=0;
+    masa       = 0;
+    co2        = 0;
     presion=0;
 
     // ── Bloque planeta ────────────────────────────────
@@ -933,7 +1064,7 @@ simulacion {
         reporte(habitables);
 
         // Cálculos con funciones y unidades
-        volumen = 1.08e12 kg;
+        volumen = 1.08e12 km3;
         densidad(masa, volumen);
 
         esPotenciaDeBase(2, 10);
@@ -1001,8 +1132,6 @@ fin";
             using (FrmDocumentacion doc = new FrmDocumentacion()) doc.ShowDialog(this);
         }
 
-
-
         private void BtnArboles_Click(object? sender, EventArgs e)
         {
             if (ultimoAST == null)
@@ -1061,7 +1190,6 @@ fin";
 
             var visual = new NodoASTVisual(etiqueta, tipo);
 
-            // Agregar hijos según el tipo concreto
             switch (nodoParser)
             {
                 case NodoPrograma prog:
@@ -1155,12 +1283,10 @@ fin";
             var subArboles = new List<NodoASTVisual>();
             if (programa == null) return subArboles;
 
-            // Función recursiva para recorrer cualquier nodo
             void Recorrer(NodoAST nodo)
             {
                 if (nodo == null) return;
 
-                // Detectar expresiones aritméticas complejas (con al menos dos operadores o paréntesis)
                 NodoASTVisual? subVisual = null;
                 if (nodo is NodoExprBinaria binaria && EsExpresionCompleja(binaria))
                     subVisual = ConvertirAST(binaria);
@@ -1176,7 +1302,6 @@ fin";
                 if (subVisual != null)
                     subArboles.Add(subVisual);
 
-                // Recorrer hijos según el tipo de nodo
                 switch (nodo)
                 {
                     case NodoPrograma prog:
@@ -1243,7 +1368,6 @@ fin";
 
             bool EsExpresionCompleja(NodoExpr expr)
             {
-                // Consideramos compleja si tiene al menos dos operadores (binarios o potencia) o contiene paréntesis
                 int contador = 0;
                 void Contar(NodoExpr e)
                 {
@@ -1261,7 +1385,7 @@ fin";
                     }
                     else if (e is NodoExprParentesis par)
                     {
-                        contador++; // cuenta el paréntesis como complejidad
+                        contador++;
                         Contar(par.Expr);
                     }
                 }
