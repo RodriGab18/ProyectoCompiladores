@@ -359,6 +359,10 @@ Para inyectar esto en el compilador, añade un bloque \f1 orbita_y_escala \{ ...
 
         private NodoPrograma? ultimoAST;
 
+        // ── Logo toolbar ──────────────────────────────────────────────────────────
+        /// <summary>Bitmap del logo ASTRA cacheado; dibujado en topPanel.Paint.</summary>
+        private Bitmap? _logoBmp;
+
         // ── Integración con Godot ─────────────────────────────────────────────
         /// <summary>Panel donde se incrustará la ventana de Godot.</summary>
         private Panel simRightInner = null!;
@@ -397,16 +401,52 @@ Para inyectar esto en el compilador, añade un bloque \f1 orbita_y_escala \{ ...
             Panel topPanel = new Panel { Dock = DockStyle.Top, Height = 64, BackColor = ColDarkGreen };
             topPanel.Paint += (s, e) =>
             {
+                // Gradiente actual
                 using var brush = new System.Drawing.Drawing2D.LinearGradientBrush(
-                    topPanel.ClientRectangle, ColDarkGreen, ColBangladesh, System.Drawing.Drawing2D.LinearGradientMode.Horizontal);
+                    topPanel.ClientRectangle, ColDarkGreen, ColBangladesh,
+                    System.Drawing.Drawing2D.LinearGradientMode.Horizontal);
                 e.Graphics.FillRectangle(brush, topPanel.ClientRectangle);
                 using var pen = new Pen(ColCaribbean, 2);
                 e.Graphics.DrawLine(pen, 0, topPanel.Height - 2, topPanel.Width, topPanel.Height - 2);
+
+                // Dibujar logo (nuevo)
+                Rectangle logoRect = new Rectangle(8, 0, 64, 64);
+                if (_logoBmp != null)
+                {
+                    e.Graphics.DrawImage(_logoBmp, logoRect);
+                }
+                else
+                {
+                    // Fallback opcional
+                    using var fallbackBrush = new SolidBrush(ColCaribbean);
+                    e.Graphics.FillEllipse(fallbackBrush, logoRect);
+                    using var font = new Font("Segoe UI", 16, FontStyle.Bold);
+                    e.Graphics.DrawString("A", font, Brushes.White, logoRect, new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                }
             };
 
-            var lblTitle = new Label { Text = "ASTRA", Font = new Font("Segoe UI", 18, FontStyle.Bold), ForeColor = ColCaribbean, Location = new Point(14, 10), Size = new Size(135, 44), AutoSize = false, TextAlign = ContentAlignment.MiddleLeft };
-            var lblSub = new Label { Text = "IDE", Font = new Font("Segoe UI", 8, FontStyle.Regular), ForeColor = ColPistachio, Location = new Point(116, 26), Size = new Size(32, 18), AutoSize = false, TextAlign = ContentAlignment.MiddleLeft };
-            var sep = new Panel { Location = new Point(152, 14), Size = new Size(2, 36), BackColor = ColBangladesh };
+            // ── Logo ASTRA ────────────────────────────────────────────────────────
+            // Cargar logo desde ruta absoluta
+            string rutaLogo = @"C:\Users\Botij\OneDrive\Documents\V SEMESTRE\PROYECTO_FINAL_COMPILADORES\ProyectoCompiladores\BioSphereIDE\Resources\Logo.png";
+            try
+            {
+                if (File.Exists(rutaLogo))
+                {
+                    _logoBmp = new Bitmap(rutaLogo);
+                    _logoBmp.MakeTransparent(Color.White);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"Logo no encontrado: {rutaLogo}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error cargando logo: {ex.Message}");
+            }
+            // Todo lo demás desplazado 38 px a la derecha para dar espacio al logo
+            var lblTitle = new Label { Text = "ASTRA", Font = new Font("Segoe UI", 18, FontStyle.Bold), ForeColor = ColCaribbean, Location = new Point(52, 10), Size = new Size(120, 44), AutoSize = false, TextAlign = ContentAlignment.MiddleLeft };
+            var sep = new Panel { Location = new Point(190, 14), Size = new Size(2, 36), BackColor = ColBangladesh };
 
             // Botones de toolbar (herencia del colaborador)
             Button CrearBotonToolbar(string emoji, string tooltip, int x)
@@ -431,22 +471,21 @@ Para inyectar esto en el compilador, añade un bloque \f1 orbita_y_escala \{ ...
                 return btn;
             }
 
-            var btnArboles       = CrearBotonToolbar("🌳",  "Ver árbol sintáctico (AST)",        162);
-            var btnDocumentacion = CrearBotonToolbar("📖",  "Documentación del lenguaje",         210);
-            var btnSimular       = CrearBotonToolbar("▶",  "Simular planeta en Godot",           258);
+            var btnArboles       = CrearBotonToolbar("🌳",  "Ver árbol sintáctico (AST)",        200);
+            var btnSimular       = CrearBotonToolbar("▶",  "Simular planeta en Godot",           248);
             // Dar al botón de simular un color especial para que destaque
             btnSimular.ForeColor        = ColMeadow;
             btnSimular.Font             = new Font("Segoe UI", 16, FontStyle.Bold);
             btnSimular.FlatAppearance.MouseOverBackColor  = Color.FromArgb(60, 46, 230, 255);
             btnSimular.FlatAppearance.MouseDownBackColor  = Color.FromArgb(120, 46, 230, 255);
 
-            chkModoPrueba = new CheckBox { Text = "  Modo Prueba", ForeColor = ColPistachio, Font = new Font("Segoe UI", 10), Location = new Point(316, 20), AutoSize = true, Checked = false };
+            chkModoPrueba = new CheckBox { Text = "  Modo Prueba", ForeColor = ColPistachio, Font = new Font("Segoe UI", 10), Location = new Point(354, 20), AutoSize = true, Checked = false };
             chkModoPrueba.CheckedChanged += ChkModoPrueba_CheckedChanged;
 
-            topPanel.Controls.Add(lblTitle); topPanel.Controls.Add(lblSub); topPanel.Controls.Add(sep); topPanel.Controls.Add(chkModoPrueba);
+            topPanel.Controls.Add(lblTitle); topPanel.Controls.Add(sep); topPanel.Controls.Add(chkModoPrueba);
+
 
             btnArboles.Click       += BtnArboles_Click;
-            btnDocumentacion.Click += BtnDocumentacion_Click;
             btnSimular.Click       += BtnSimular_ClickAsync;
 
             // ════════ STATUSBAR ════════

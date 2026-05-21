@@ -14,4 +14,11 @@
     <PackageReference Include="AvalonEdit" Version="6.3.0.90" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Logo incrustado en el ensamblado — no requiere archivo externo en producción -->
+    <!-- Condition: compila sin error aunque el PNG aún no exista              -->
+    <EmbeddedResource Include="Resources\logo_astra.png"
+                      Condition="Exists('Resources\logo_astra.png')" />
+  </ItemGroup>
+
 </Project>
