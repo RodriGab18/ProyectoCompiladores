@@ -139,6 +139,23 @@ namespace BioSphereIDE.Analizadores
         }
     }
 
+    public class NodoOrbitaYEscala : NodoSentencia
+    {
+        public List<NodoSentencia> Instrucciones { get; set; } = new();
+
+        public override string ToTreeString(string indent, bool isLast)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine(Pfx(indent, isLast) + "BLOQUE_ORBITA_Y_ESCALA");
+            var ni = NextIndent(indent, isLast);
+            sb.Append(ni + "├── orbita_y_escala {\n");
+            for (int i = 0; i < Instrucciones.Count; i++)
+                sb.Append(Instrucciones[i].ToTreeString(ni + "│   ", i == Instrucciones.Count - 1));
+            sb.Append(ni + "└── }\n");
+            return sb.ToString();
+        }
+    }
+
     // ─── Sentencias concretas ──────────────────────────────────────────────────
 
     public class NodoAsignacion : NodoSentencia

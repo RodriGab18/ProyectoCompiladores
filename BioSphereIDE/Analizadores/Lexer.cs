@@ -17,7 +17,7 @@ namespace BioSphereIDE.Analizadores
         // Keywords classified as PALABRA_RESERVADA during post-processing after identifier match
         private static readonly HashSet<string> _keywords = new(StringComparer.Ordinal)
         {
-            "simulacion", "planeta", "atmosfera", "agua", "vida", "inicio", "fin",
+            "simulacion", "planeta", "atmosfera", "agua", "vida", "orbita_y_escala", "inicio", "fin",
             "si", "sino", "mientras", "iterar", "continuar", "romper", "reporte",
             "mostrar", "verdadero", "falso", "nulo", "y", "o", "funcion"
         };
@@ -30,26 +30,26 @@ namespace BioSphereIDE.Analizadores
         private static List<TokenDefinition> BuildDefinitions() => new()
         {
             // ERRORS must come before their valid counterparts
-            new(TokenType.ERROR_LEXICO, @"\d+[a-zA-Z_][a-zA-Z0-9_]*"),   // 123abc
-            new(TokenType.ERROR_LEXICO, @"[@#\$%&!?\|\\~`]"),             // illegal chars
-            new(TokenType.ERROR_LEXICO, "\"[^\"\r\n]*$"),                  // unclosed string
+            new(TokenType.ERROR_LEXICO, @"\G\d+[a-zA-Z_][a-zA-Z0-9_]*"),   // 123abc
+            new(TokenType.ERROR_LEXICO, @"\G[@#\$%&!?\|\\~`]"),             // illegal chars
+            new(TokenType.ERROR_LEXICO, "\\G\"[^\"\r\n]*$"),                  // unclosed string
 
             // Numbers — scientific first, then float, then integer
-            new(TokenType.NUMERO, @"\d+\.?\d*[eE][+\-]?\d+"),
-            new(TokenType.NUMERO, @"\d+\.\d+"),
-            new(TokenType.NUMERO, @"\d+"),
+            new(TokenType.NUMERO, @"\G\d+\.?\d*[eE][+\-]?\d+"),
+            new(TokenType.NUMERO, @"\G\d+\.\d+"),
+            new(TokenType.NUMERO, @"\G\d+"),
 
             // Operators — multi-char before single-char
-            new(TokenType.OPERADOR, @"<=|>=|==|!=|<|>|\+|-|\*|/|=|\^"),
+            new(TokenType.OPERADOR, @"\G(?:<=|>=|==|!=|<|>|\+|-|\*|/|=|\^)"),
 
             // Strings with basic escape sequences
-            new(TokenType.CADENA, "\"(?:[^\"\\\\\\r\\n]|\\\\.)*\""),
+            new(TokenType.CADENA, "\\G\"(?:[^\"\\\\\\r\\n]|\\\\.)*\""),
 
             // Symbols
-            new(TokenType.SIMBOLO, @"\(|\)|\{|\}|\[|\]|;|,|\.|°"),
+            new(TokenType.SIMBOLO, @"\G(?:\(|\)|\{|\}|\[|\]|;|,|\.|°)"),
 
             // Identifiers — keywords promoted to PALABRA_RESERVADA in Tokenize()
-            new(TokenType.IDENTIFICADOR, @"[a-zA-ZáéíóúÁÉÍÓÚñÑ_][a-zA-ZáéíóúÁÉÍÓÚñÑ0-9_]*"),
+            new(TokenType.IDENTIFICADOR, @"\G[a-zA-ZáéíóúÁÉÍÓÚñÑ_][a-zA-ZáéíóúÁÉÍÓÚñÑ0-9_]*"),
         };
 
         // ────────────────────────────────────────────────────────────────────────

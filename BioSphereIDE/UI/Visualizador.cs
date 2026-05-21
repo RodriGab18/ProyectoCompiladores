@@ -191,6 +191,7 @@ namespace BioSphereIDE.UI
                     {
                               switch (tipo)
                               {
+                                        case "OrbitaYEscala": return Brushes.MediumPurple;
                                         case "Operador": return Brushes.LightSkyBlue;
                                         case "Numero": return Brushes.LightGreen;
                                         case "Identificador": return Brushes.LightYellow;

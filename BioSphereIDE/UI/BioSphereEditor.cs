@@ -1,7 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using BioSphereIDE.Core;
 using BioSphereIDE.Analizadores;
@@ -43,6 +47,7 @@ namespace BioSphereIDE.UI
             tabs.TabPages.Add(CrearPaginaRtf("2. Sintaxis Básica", GetSintaxisBasica()));
             tabs.TabPages.Add(CrearPaginaRtf("3. Palabras Reservadas", GetPalabrasReservadas()));
             tabs.TabPages.Add(CrearPaginaRtf("4. Ejemplos", GetEjemplos()));
+            tabs.TabPages.Add(CrearPaginaRtf("5. Integración Godot", GetIntegracionGodot()));
 
             this.Controls.Add(tabs);
 
@@ -297,8 +302,30 @@ fin\f0\fs20\par
 3. Revisa la ventana de \b tokens\b0, \b consola de salida\b0 y los errores (si los hay).\par
 4. Si todo es correcto, se mostrará el árbol sintáctico y la tabla de símbolos.\par
 }";
-    }
 
+        private string GetIntegracionGodot() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
+\b\fs24 Godot Planetary Simulation - API Integration Guide\b0\fs20\par
+\par
+Este documento detalla la interfaz de parámetros del simulador planetario en Godot.\par
+\par
+\b Esquema de Parámetros (JSON Schema)\b0\par
+\tab • \b radius\b0: [100.0, 10000.0]\par
+\tab • \b planet_mass\b0: [0.1, 20.0]\par
+\tab • \b star_distance_au\b0: [0.1, 5.0]\par
+\tab • \b rotation_period_hours\b0: [1.0, 1000.0]\par
+\tab • \b planet_temp\b0: [-100.0, 500.0]\par
+\tab • \b atm_pressure\b0: [0.0, 2.0]\par
+\tab • \b atm_co2\b0: [0.0, 1.0]\par
+\tab • \b atm_methane\b0: [0.0, 1.0]\par
+\tab • \b atm_o2_n2\b0: [0.0, 1.0]\par
+\tab • \b planet_water\b0: [0.0, 1.0]\par
+\tab • \b tectonic_activity\b0: [0.0, 1.0]\par
+\tab • \b composition_iron\b0: [0.0, 1.0]\par
+\tab • \b planet_vegetation\b0: [0.0, 1.0]\par
+\par
+Para inyectar esto en el compilador, añade un bloque \f1 orbita_y_escala \{ ... \}\f0 dentro de simulacion.\par
+}";
+    }
     // ==================================================================================
     // EDITOR PRINCIPAL CON INTERFAZ UNIFICADA (Nebulosa + Pestañas Inferiores)
     // ==================================================================================
@@ -331,6 +358,17 @@ fin\f0\fs20\par
         private System.Windows.Forms.Timer errorTimer = null!;
 
         private NodoPrograma? ultimoAST;
+
+        // ── Integración con Godot ─────────────────────────────────────────────
+        /// <summary>Panel donde se incrustará la ventana de Godot.</summary>
+        private Panel simRightInner = null!;
+        /// <summary>Instancia del embedder Win32. Null hasta que se lanza la simulación.</summary>
+        private GodotEmbedder? _godotEmbedder;
+        // Rutas configuradas por el usuario
+        private const string RutaEjeGodot =
+            @"C:\Users\Botij\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64.exe";
+        private const string RutaProyectoGodot =
+            @"C:/Users/Botij/OneDrive/Documents/godot-cuberact-planet-chunked-lod-main";
 
         // Paleta Nebulosa (Tus colores)
         private static readonly Color ColRichBlack = Color.FromArgb(9, 6, 22);
@@ -393,16 +431,23 @@ fin\f0\fs20\par
                 return btn;
             }
 
-            var btnArboles = CrearBotonToolbar("🌳", "Ver árbol sintáctico (AST)", 162);
-            var btnDocumentacion = CrearBotonToolbar("📖", "Documentación del lenguaje", 210);
+            var btnArboles       = CrearBotonToolbar("🌳",  "Ver árbol sintáctico (AST)",        162);
+            var btnDocumentacion = CrearBotonToolbar("📖",  "Documentación del lenguaje",         210);
+            var btnSimular       = CrearBotonToolbar("▶",  "Simular planeta en Godot",           258);
+            // Dar al botón de simular un color especial para que destaque
+            btnSimular.ForeColor        = ColMeadow;
+            btnSimular.Font             = new Font("Segoe UI", 16, FontStyle.Bold);
+            btnSimular.FlatAppearance.MouseOverBackColor  = Color.FromArgb(60, 46, 230, 255);
+            btnSimular.FlatAppearance.MouseDownBackColor  = Color.FromArgb(120, 46, 230, 255);
 
-            chkModoPrueba = new CheckBox { Text = "  Modo Prueba", ForeColor = ColPistachio, Font = new Font("Segoe UI", 10), Location = new Point(268, 20), AutoSize = true, Checked = false };
+            chkModoPrueba = new CheckBox { Text = "  Modo Prueba", ForeColor = ColPistachio, Font = new Font("Segoe UI", 10), Location = new Point(316, 20), AutoSize = true, Checked = false };
             chkModoPrueba.CheckedChanged += ChkModoPrueba_CheckedChanged;
 
             topPanel.Controls.Add(lblTitle); topPanel.Controls.Add(lblSub); topPanel.Controls.Add(sep); topPanel.Controls.Add(chkModoPrueba);
 
-            btnArboles.Click += BtnArboles_Click;
+            btnArboles.Click       += BtnArboles_Click;
             btnDocumentacion.Click += BtnDocumentacion_Click;
+            btnSimular.Click       += BtnSimular_ClickAsync;
 
             // ════════ STATUSBAR ════════
             statusPanel = new Panel { Dock = DockStyle.Bottom, Height = 28, BackColor = ColPine };
@@ -430,13 +475,34 @@ fin\f0\fs20\par
                 SplitterWidth = 6 
             };
 
-            // Simulación (Planeta)
+            // Simulación (Planeta) — simRightInner guardado como campo para el embedder
             var simulacionRightPanel = new Panel { Dock = DockStyle.Fill, BackColor = ColRichBlack, Padding = new Padding(8) };
-            var simRightInner = new Panel { Dock = DockStyle.Fill, BackColor = ColDarkGreen };
+            simRightInner = new Panel { Dock = DockStyle.Fill, BackColor = ColDarkGreen };
             AplicarBordesRedondeados(simRightInner, 15, ColDarkGreen);
-            simRightInner.Controls.Add(new Label { Text = "Área reservada para integración con motor 3D", ForeColor = ColStone, Font = new Font("Segoe UI", 12, FontStyle.Italic), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter });
-            simRightInner.Controls.Add(new Label { Text = "  ◈  simulación de biósfera", ForeColor = ColMeadow, Font = new Font("Consolas", 10, FontStyle.Bold), Dock = DockStyle.Top, Height = 35, TextAlign = ContentAlignment.MiddleLeft });
+            var lblSimPlaceholder = new Label
+            {
+                Text      = "Presiona  ▶  para iniciar la simulación en Godot",
+                ForeColor = ColStone,
+                Font      = new Font("Segoe UI", 12, FontStyle.Italic),
+                Dock      = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Name      = "lblSimPlaceholder"
+            };
+            var lblSimHeader = new Label
+            {
+                Text      = "  ◈  simulación de biósfera",
+                ForeColor = ColMeadow,
+                Font      = new Font("Consolas", 10, FontStyle.Bold),
+                Dock      = DockStyle.Top,
+                Height    = 35,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Name      = "lblSimHeader"
+            };
+            simRightInner.Controls.Add(lblSimPlaceholder);
+            simRightInner.Controls.Add(lblSimHeader);
             simulacionRightPanel.Controls.Add(simRightInner);
+            // Limpiar al cerrar para no dejar el proceso de Godot huérfano
+            this.FormClosing += (s, e) => _godotEmbedder?.Dispose();
 
             // Consola
             var consolaPanel = new Panel { Dock = DockStyle.Fill, BackColor = ColRichBlack, Padding = new Padding(8) };
@@ -478,37 +544,31 @@ fin\f0\fs20\par
                 Padding = new Padding(10, 10, 10, 0),
                 Margin = new Padding(0)
             };
+            // Ensamblar las pestañas en el panel izquierdo principal
+            leftPanel.Controls.Add(panelContenidoPestañas);
+            leftPanel.Controls.Add(tabsHeaderPanel);
 
-            var contenidoInner = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = ColDarkGreen,
-                Margin = new Padding(0)
+            // ── PANEL IZQUIERDO: Editor ─────────────────────────────────────
+            var editorLayout = new TableLayoutPanel 
+            { 
+                Dock = DockStyle.Fill, 
+                BackColor = ColRichBlack,
+                RowCount = 2,
+                ColumnCount = 1,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
             };
-            AplicarBordesRedondeados(contenidoInner, 15, ColDarkGreen);
-            panelContenidoPestañas.Controls.Add(contenidoInner);
+            editorLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+            editorLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            panelCodigo = editorLayout;
 
-            // ✅ CORRECTO: Dock.Fill primero (para z-order correcto), luego Dock.Bottom
-            leftPanel.Controls.Add(panelContenidoPestañas); // Fill
-            leftPanel.Controls.Add(tabsHeaderPanel);          // Bottom
-
-            // Pestaña 1: Código (con header CORREGIDO)
-            panelCodigo = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0), Margin = new Padding(0) };
-
-            // Header del editor (Dock Top, no tapa el código)
-            var editorHeaderPanel = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 32,
-                BackColor = ColDarkGreen,
-                Margin = new Padding(0)
-            };
-            editorHeaderPanel.Paint += (s, e) =>
+            var editorHeader = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0), BackColor = ColDarkGreen };
+            editorHeader.Paint += (s, e) =>
             {
                 using var brush = new System.Drawing.Drawing2D.LinearGradientBrush(
-                    editorHeaderPanel.ClientRectangle, ColDarkGreen, ColRichBlack,
+                    editorHeader.ClientRectangle, ColDarkGreen, ColRichBlack,
                     System.Drawing.Drawing2D.LinearGradientMode.Vertical);
-                e.Graphics.FillRectangle(brush, editorHeaderPanel.ClientRectangle);
+                e.Graphics.FillRectangle(brush, editorHeader.ClientRectangle);
             };
             var lblEditorTab = new Label
             {
@@ -519,7 +579,7 @@ fin\f0\fs20\par
                 TextAlign = ContentAlignment.MiddleLeft,
                 Margin = new Padding(0)
             };
-            editorHeaderPanel.Controls.Add(lblEditorTab);
+            editorHeader.Controls.Add(lblEditorTab);
 
             // AvalonEdit (Dock Fill después del header)
             editorHost = new System.Windows.Forms.Integration.ElementHost
@@ -563,9 +623,41 @@ fin\f0\fs20\par
             txtCodigo.TextArea.TextView.MouseHoverStopped += TextView_MouseHoverStopped;
             editorHost.Child = txtCodigo;
 
-            // ✅ CORRECTO: Dock.Fill primero (para z-order correcto), luego Dock.Top
-            panelCodigo.Controls.Add(editorHost);         // Fill
-            panelCodigo.Controls.Add(editorHeaderPanel);  // Top
+            // Ensamblaje Panel Izquierdo
+            editorHost.Dock = DockStyle.Fill;
+            editorHost.Margin = new Padding(0);
+            editorLayout.Controls.Add(editorHeader, 0, 0);
+            editorLayout.Controls.Add(editorHost, 0, 1);
+
+            // ── PANEL DERECHO: Tokens + Consola + Simulación ─────────────────
+            var rightSplitTop = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Horizontal,
+                SplitterDistance = 150, // Fijo a 150px para tokens
+                BackColor = ColDarkGreen,
+                SplitterWidth = 3
+            };
+
+            var rightSplitBottom = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Horizontal,
+                SplitterDistance = 150, // Fijo a 150px para consola
+                BackColor = ColDarkGreen,
+                SplitterWidth = 3
+            };
+
+            // == 1. SECCIÓN TOKENS ==
+            var tokensPanel = new Panel { Dock = DockStyle.Fill, BackColor = ColRichBlack };
+            var tokensHeader = new Panel { Dock = DockStyle.Top, Height = 30, BackColor = ColDarkGreen };
+            tokensHeader.Paint += (s, e) =>
+            {
+                using var brush = new System.Drawing.Drawing2D.LinearGradientBrush(tokensHeader.ClientRectangle, ColBangladesh, ColDarkGreen, System.Drawing.Drawing2D.LinearGradientMode.Horizontal);
+                e.Graphics.FillRectangle(brush, tokensHeader.ClientRectangle);
+            };
+            var lblTokensTab = new Label { Text = "  ◈  tokens", ForeColor = ColMeadow, Font = new Font("Consolas", 9), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+            tokensHeader.Controls.Add(lblTokensTab);
 
             // Pestaña 2: Tokens
             panelTokens = new Panel { Dock = DockStyle.Fill, Padding = new Padding(15) };
@@ -669,9 +761,9 @@ fin\f0\fs20\par
             docHeader.Controls.Add(btn4);
 
             // Agregar paneles al contenido
-            contenidoInner.Controls.Add(panelCodigo);
-            contenidoInner.Controls.Add(panelTokens);
-            contenidoInner.Controls.Add(panelDocumentacion);
+            panelContenidoPestañas.Controls.Add(panelCodigo);
+            panelContenidoPestañas.Controls.Add(panelTokens);
+            panelContenidoPestañas.Controls.Add(panelDocumentacion);
 
             // Crear botones de pestañas
             btnTabCodigo = CrearBotonTab("💻 Código", panelCodigo);
@@ -690,7 +782,6 @@ fin\f0\fs20\par
             {
                 leftPanel.PerformLayout();
                 panelContenidoPestañas.PerformLayout();
-                contenidoInner.PerformLayout();
                 tabsHeaderPanel.PerformLayout();
                 this.PerformLayout();
                 
@@ -818,6 +909,181 @@ fin\f0\fs20\par
         }
 
         // ==================== MÉTODOS Y LOGICA DE EVENTOS ====================
+
+        // ── Botón ▶ Simular Planeta ──────────────────────────────────────────
+
+        /// <summary>
+        /// Extrae los parámetros del planeta del último AST analizado y los
+        /// convierte a <see cref="PlanetaParametros"/> que se guarda en JSON.
+        /// </summary>
+        private PlanetaParametros ExtraerParametros()
+        {
+            var p = new PlanetaParametros(); // valores por defecto del DTO
+
+            if (ultimoAST?.BloqueSimulacion == null)
+                return p;
+
+            foreach (var sent in ultimoAST.BloqueSimulacion.Sentencias)
+            {
+                if (sent is NodoOrbitaYEscala orbita)
+                {
+                    foreach (var instruccion in orbita.Instrucciones)
+                    {
+                        if (instruccion is NodoAsignacion asig)
+                        {
+                            float v = ExtraerFloat(asig.Valor);
+                            if (float.IsNaN(v)) continue;
+
+                            switch (asig.Identificador)
+                            {
+                                case "radius":                p.radius                = v; break;
+                                case "terrain_height":        p.terrain_height        = v; break;
+                                case "atmosphere_height":     p.atmosphere_height     = v; break;
+                                case "planet_mass":           p.planet_mass           = v; break;
+                                case "star_distance_au":      p.star_distance_au      = v; break;
+                                case "rotation_period_hours": p.rotation_period_hours = v; break;
+                                case "planet_temp":           p.planet_temp           = v; break;
+                                case "atm_pressure":          p.atm_pressure          = v; break;
+                                case "atm_co2":               p.atm_co2               = v; break;
+                                case "atm_methane":           p.atm_methane           = v; break;
+                                case "atm_o2_n2":             p.atm_o2_n2             = v; break;
+                                case "planet_water":          p.planet_water          = v; break;
+                                case "tectonic_activity":     p.tectonic_activity     = v; break;
+                                case "composition_iron":      p.composition_iron      = v; break;
+                                case "planet_vegetation":     p.planet_vegetation     = v; break;
+                            }
+                        }
+                    }
+                }
+            }
+            return p;
+        }
+
+        /// <summary>
+        /// Convierte un nodo de expresión a float.
+        /// Maneja: NodoExprNumero (literal), NodoCantidad (con unidad), NodoExprUnaria (negativo).
+        /// Devuelve NaN si el nodo no representa un valor numérico.
+        /// </summary>
+        private static float ExtraerFloat(NodoAST? nodo)
+        {
+            // Desenvolver cantidad con unidad física (ej. "5.97e24 kg")
+            if (nodo is NodoCantidad cant)
+                nodo = cant.Expr;
+
+            // Número negativo: -(expresion)
+            if (nodo is NodoExprUnaria unaria && unaria.Operador == "-")
+            {
+                float inner = ExtraerFloat(unaria.Operando);
+                return float.IsNaN(inner) ? float.NaN : -inner;
+            }
+
+            // Literal numérico
+            if (nodo is NodoExprNumero num &&
+                float.TryParse(num.Valor,
+                               System.Globalization.NumberStyles.Float,
+                               System.Globalization.CultureInfo.InvariantCulture,
+                               out float resultado))
+                return resultado;
+
+            return float.NaN;
+        }
+
+        /// <summary>
+        /// Handler del botón ▶ — compila, genera JSON, incrusta Godot o actualiza
+        /// el planeta si ya está corriendo.
+        /// </summary>
+        private async void BtnSimular_ClickAsync(object? sender, EventArgs e)
+        {
+            // 1. Verificar que no haya errores de compilación
+            if (currentErrors != null && currentErrors.Count > 0)
+            {
+                MessageBox.Show(
+                    "No se puede iniciar la simulación porque existen errores en el código ASTRA.\n" +
+                    "Corrige los errores indicados en la consola y vuelve a intentarlo.",
+                    "Error de Compilación",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (ultimoAST == null)
+            {
+                MessageBox.Show(
+                    "El código no ha sido analizado aún. Escribe o modifica el código para compilarlo.",
+                    "Sin compilación",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            // 2. Extraer parámetros del AST y escribir el JSON en %TEMP%
+            var parametros = ExtraerParametros();
+            try
+            {
+                GodotEmbedder.EscribirJson(parametros);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"No se pudo escribir el archivo de parámetros:\n{ex.Message}",
+                                "Error de E/S", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            // 3a. Si Godot ya está incrustado, el FileSystemWatcher de Godot
+            //     detectará el cambio del JSON automáticamente → no hay que relanzar.
+            if (_godotEmbedder != null)
+            {
+                // Mostrar feedback en consola
+                txtConsola.SelectionColor = ColCaribbean;
+                txtConsola.AppendText("\n▶  Parámetros actualizados → Godot recargará el planeta.\n");
+                return;
+            }
+
+            // 3b. Primera vez: limpiar labels provisionales e incrustar Godot
+            // Eliminar los labels de placeholder
+            var ctrlsAEliminar = simRightInner.Controls
+                .OfType<Label>()
+                .Where(l => l.Name == "lblSimPlaceholder" || l.Name == "lblSimHeader")
+                .ToList();
+            foreach (var lbl in ctrlsAEliminar)
+                simRightInner.Controls.Remove(lbl);
+
+            // Construir argumentos: ruta al proyecto Godot + ruta al JSON
+            string argsGodot = $"--path \"{RutaProyectoGodot}\" -- "
+                             + $"--astra_json=\"{GodotEmbedder.RutaJsonTemp}\"";
+
+            txtConsola.SelectionColor = ColMeadow;
+            txtConsola.AppendText("\n▶  Iniciando simulación en Godot...\n");
+
+            try
+            {
+                _godotEmbedder = new GodotEmbedder(simRightInner);
+                await _godotEmbedder.LanzarYIncrustarAsync(RutaEjeGodot, argsGodot);
+
+                txtConsola.SelectionColor = ColCaribbean;
+                txtConsola.AppendText("  ✅ Godot incrustado correctamente.\n");
+                txtConsola.SelectionColor = ColPistachio;
+                txtConsola.AppendText($"  JSON → {GodotEmbedder.RutaJsonTemp}\n");
+            }
+            catch (TimeoutException)
+            {
+                _godotEmbedder?.Dispose();
+                _godotEmbedder = null;
+                // Restaurar los labels
+                simRightInner.Controls.Add(new Label { Text = "Presiona  ▶  para iniciar la simulación en Godot", ForeColor = ColStone, Font = new Font("Segoe UI", 12, FontStyle.Italic), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, Name = "lblSimPlaceholder" });
+                simRightInner.Controls.Add(new Label { Text = "  ◈  simulación de biósfera", ForeColor = ColMeadow, Font = new Font("Consolas", 10, FontStyle.Bold), Dock = DockStyle.Top, Height = 35, TextAlign = ContentAlignment.MiddleLeft, Name = "lblSimHeader" });
+
+                MessageBox.Show("Godot tardó demasiado en responder. Verifica la ruta del ejecutable.",
+                                "Tiempo de espera agotado", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            catch (Exception ex)
+            {
+                _godotEmbedder?.Dispose();
+                _godotEmbedder = null;
+                MessageBox.Show($"Error al lanzar Godot:\n{ex.Message}",
+                                "Error de Ejecución", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
 
         private void ActualizarContadorErrores()
         {
@@ -988,26 +1254,43 @@ fin\f0\fs20\par
 
         private void CargarCodigoCorrecto()
         {
-            txtCodigo.Text = @"inicio
+
+            txtCodigo.Text =
+@"inicio
 simulacion {
 
-    // ── Variables globales de simulación ──────────────
-    ciclos    = 0;
+    // ── Bloque de integración con Godot ────────────────
+    // Parámetros para un planeta tipo Tierra habitable
+    orbita_y_escala {
+        radius = 6371.0;
+        planet_mass = 1.0;
+        star_distance_au = 1.0;
+        rotation_period_hours = 24.0;
+        planet_temp = 15.0;
+        atm_pressure = 1.0;
+        atm_co2 = 0.0004;
+        atm_methane = 0.000001;
+        atm_o2_n2 = 0.99;
+        planet_water = 0.71;
+        tectonic_activity = 0.4;
+        composition_iron = 0.35;
+        planet_vegetation = 0.8;
+    }
+
+    // ── Variables globales y de evaluación ─────────────
+    ciclos = 0;
     habitables = 0;
-    masa       = 0;
-    co2        = 0;
-    presion=0;
 
     // ── Bloque planeta ────────────────────────────────
     planeta {
-        masa  = 5.97e24 kg;
+        masa = 5.97e24 kg;
         radio = 6371 km;
     }
 
     // ── Bloque atmósfera ──────────────────────────────
     atmosfera {
-        presion = 1.01 atm;
-        co2     = 415 ppm;
+        presion = 1.0 atm;
+        co2 = 415 ppm;
     }
 
     // ── Bloque agua ───────────────────────────────────
@@ -1016,71 +1299,47 @@ simulacion {
     }
 
     // ── Funciones auxiliares ──────────────────────────
-    funcion densidad(m, v) {
-        resultado = m / v;
-        mostrar(resultado);
-    }
-
-    funcion esPotenciaDeBase(base, exp) {
-        valor = base ^ exp;
-        mostrar(valor);
+    funcion evaluarHabitabilidad(g, temp, tiene_agua) {
+        si (g > 8 y g < 12) {
+            si (temp > 0 y temp < 40) {
+                si (tiene_agua == verdadero) {
+                    mostrar(""El planeta reúne todas las condiciones para albergar vida."");
+                }
+            }
+        } sino {
+            mostrar(""El planeta presenta condiciones extremas que dificultan la vida."");
+        }
     }
 
     // ── Bloque vida ───────────────────────────────────
     vida {
-        temperatura = -10;
-        indice      = 1;
-
-        /* Ciclo de ajuste de temperatura */
-        mientras (temperatura < 30) {
-            temperatura = temperatura + 5;
-            ciclos      = ciclos + 1;
-
-            // Saltar valores extremos fríos
-            si (temperatura < 0) {
-                continuar;
-            }
-
-            // Condición habitable: temperatura entre 10 y 25 grados
-            si (temperatura > 10 y temperatura < 25) {
+        temperatura_actual = 15;
+        
+        mientras (ciclos < 5) {
+            ciclos = ciclos + 1;
+            
+            si (temperatura_actual >= 10 y temperatura_actual <= 30) {
                 habitables = habitables + 1;
-                mostrar(""Temperatura habitable"");
+                reporte(""Clima estable"");
             } sino {
-                si (temperatura >= 25 o temperatura == 0) {
-                    reporte(""Límite de habitabilidad"");
-                }
+                reporte(""Fluctuación climática severa"");
             }
-
-            // Detener si alcanzamos 5 ciclos habitables
-            si (habitables == 5) {
-                romper;
-            }
+            
+            // Incrementamos un poco la temperatura
+            temperatura_actual = temperatura_actual + 2;
         }
 
-        // Reportes finales
-        reporte(""Ciclos totales ejecutados"");
-        reporte(ciclos);
-        reporte(""Zonas habitables encontradas"");
+        reporte(""Total de ciclos en rango habitable:"");
         reporte(habitables);
 
-        // Cálculos con funciones y unidades
-        volumen = 1.08e12 km3;
-        densidad(masa, volumen);
 
-        esPotenciaDeBase(2, 10);
-
-        // Listas de datos
-        muestras = [15, 20, 25, 30];
-        activo   = verdadero;
-        nombre   = ""Kepler-442b"";
-
-        mostrar(nombre);
-        mostrar(activo);
-        mostrar(muestras);
-
-        // Expresión aritmética con unidades y paréntesis
-        energia = (presion * 1000) / (co2 + 1);
-        mostrar(energia);
+        // Llamamos a la función auxiliar simulando una gravedad terrestre 9.8m/s2
+        evaluarHabitabilidad(9.8, 15, verdadero);
+        
+        // Operación con variables
+        indice_biologico = (habitables * 100) / ciclos;
+        mostrar(""Índice biológico estimado (%):"");
+        mostrar(indice_biologico);
     }
 }
 fin";
@@ -1168,6 +1427,7 @@ fin";
                 case NodoBloqueAtmosfera atmos: etiqueta = "atmosfera"; tipo = "PalabraReservada"; break;
                 case NodoBloqueAgua agua: etiqueta = "agua"; tipo = "PalabraReservada"; break;
                 case NodoBloqueVida vida: etiqueta = "vida"; tipo = "PalabraReservada"; break;
+                case NodoOrbitaYEscala orbita: etiqueta = "Órbita y Escala"; tipo = "OrbitaYEscala"; break;
                 case NodoAsignacion asig: etiqueta = "="; tipo = "Operador"; break;
                 case NodoMostrar mostrar: etiqueta = "mostrar"; tipo = "PalabraReservada"; break;
                 case NodoReporte reporte: etiqueta = "reporte"; tipo = "PalabraReservada"; break;
@@ -1209,6 +1469,9 @@ fin";
                     break;
                 case NodoBloqueVida vida:
                     foreach (var s in vida.Sentencias) visual.Hijos.Add(ConvertirAST(s)!);
+                    break;
+                case NodoOrbitaYEscala orbita:
+                    foreach (var s in orbita.Instrucciones) visual.Hijos.Add(ConvertirAST(s)!);
                     break;
                 case NodoAsignacion asig:
                     visual.Hijos.Add(new NodoASTVisual(asig.Identificador, "Identificador"));

@@ -254,6 +254,66 @@ namespace BioSphereIDE.Analizadores
             foreach (var sym in scope.Values) Symbols.Add(sym);
         }
 
+        private void VisitOrbitaYEscala(NodoOrbitaYEscala node)
+        {
+            _table.PushScope("orbita_y_escala");
+            foreach (var s in node.Instrucciones) VisitSentencia(s);
+
+            void CheckRange(string name, double min, double max)
+            {
+                var (sym, _) = _table.LookUp(name);
+                if (sym != null && sym.Tipo == "numero" && sym.Valor is string sVal && double.TryParse(sVal, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double val))
+                {
+                    if (val < min || val > max)
+                        AddError("SEM-100", $"El valor de '{name}' ({val}) está fuera del rango permitido [{min}, {max}].", node.SourceToken);
+                }
+            }
+
+            CheckRange("radius", 100.0, 10000.0);
+            CheckRange("planet_mass", 0.1, 20.0);
+            CheckRange("star_distance_au", 0.1, 5.0);
+            CheckRange("rotation_period_hours", 1.0, 1000.0);
+            CheckRange("planet_temp", -100.0, 500.0);
+            CheckRange("atm_pressure", 0.0, 2.0);
+            CheckRange("atm_co2", 0.0, 1.0);
+            CheckRange("atm_methane", 0.0, 1.0);
+            CheckRange("atm_o2_n2", 0.0, 1.0);
+            CheckRange("planet_water", 0.0, 1.0);
+            CheckRange("tectonic_activity", 0.0, 1.0);
+            CheckRange("composition_iron", 0.0, 1.0);
+            CheckRange("planet_vegetation", 0.0, 1.0);
+
+            var (massSym, _) = _table.LookUp("planet_mass");
+            var (radSym, _) = _table.LookUp("radius");
+
+            if (massSym != null && radSym != null && massSym.Tipo == "numero" && radSym.Tipo == "numero")
+            {
+                if (massSym.Valor is string sMass && double.TryParse(sMass, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double mass) &&
+                    radSym.Valor is string sRad && double.TryParse(sRad, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double rad))
+                {
+                    if (rad != 0)
+                    {
+                        double g = mass / (rad * rad);
+                        var gSym = new Symbol
+                        {
+                            Nombre = "gravedad_calculada",
+                            Tipo = "numero",
+                            Valor = g.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                            Unidad = "m/s2",
+                            Linea = node.SourceToken?.Line ?? 1,
+                            Columna = node.SourceToken?.Column ?? 1,
+                            Ambito = _table.CurrentScope,
+                            Usado = true
+                        };
+                        _table.TryAdd(gSym);
+                    }
+                }
+            }
+
+            var scope = _table.PopScope();
+            foreach (var sym in scope.Values) Symbols.Add(sym);
+        }
+
         private void VisitDefinicionFuncion(NodoDefinicionFuncion node)
         {
             // Register the function symbol in the *outer* scope.
@@ -307,6 +367,7 @@ namespace BioSphereIDE.Analizadores
                 case NodoBloqueAtmosfera    at: VisitBloqueAtmosfera(at);   break;
                 case NodoBloqueAgua         ag: VisitBloqueAgua(ag);        break;
                 case NodoBloqueVida         v:  VisitBloqueVida(v);         break;
+                case NodoOrbitaYEscala      o:  VisitOrbitaYEscala(o);      break;
                 case NodoContinuar          c:  VisitContinuar(c);          break;
                 case NodoRomper             ro: VisitRomper(ro);            break;
                 case NodoExpresionSentencia es: VisitValor(es.Expresion, es.SourceToken); break;

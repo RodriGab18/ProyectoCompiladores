@@ -102,6 +102,8 @@ namespace BioSphereIDE.Analizadores
         /// Skip tokens until we reach a statement boundary or EOF.
         private void Synchronize()
         {
+            if (Current != null && Current.Type != TokenType.EOF) _pos++;
+
             while (Current != null && Current.Type != TokenType.EOF)
             {
                 if (Peek(TokenType.SIMBOLO, ";") || Peek(TokenType.SIMBOLO, "}"))
@@ -195,6 +197,15 @@ namespace BioSphereIDE.Analizadores
             return new NodoBloqueVida { Sentencias = stmts, SourceToken = tok };
         }
 
+        private NodoOrbitaYEscala? ParseOrbitaYEscala()
+        {
+            var tok = Consume(TokenType.PALABRA_RESERVADA, "orbita_y_escala"); if (tok == null) return null;
+            if (!Eat(TokenType.SIMBOLO, "{")) return null;
+            var stmts = ParseStmtList(stopOnSino: false);
+            Eat(TokenType.SIMBOLO, "}");
+            return new NodoOrbitaYEscala { Instrucciones = stmts, SourceToken = tok };
+        }
+
         // ════════════════════════════════════════════════════════════════════════
         //  STATEMENT LIST
         // ════════════════════════════════════════════════════════════════════════
@@ -230,6 +241,7 @@ namespace BioSphereIDE.Analizadores
             if (Peek(TokenType.PALABRA_RESERVADA, "atmosfera"))  return ParseBloqueAtmosfera();
             if (Peek(TokenType.PALABRA_RESERVADA, "agua"))       return ParseBloqueAgua();
             if (Peek(TokenType.PALABRA_RESERVADA, "vida"))       return ParseBloqueVida();
+            if (Peek(TokenType.PALABRA_RESERVADA, "orbita_y_escala")) return ParseOrbitaYEscala();
             if (Peek(TokenType.PALABRA_RESERVADA, "funcion"))    return ParseFuncion();
             if (Peek(TokenType.PALABRA_RESERVADA, "si"))         return ParseSi();
             if (Peek(TokenType.PALABRA_RESERVADA, "mientras"))   return ParseMientras();
@@ -621,7 +633,7 @@ namespace BioSphereIDE.Analizadores
             Current.Lexeme is "<" or ">" or "<=" or ">=" or "==" or "!=";
 
         private static readonly HashSet<string> _units = new(StringComparer.Ordinal)
-            { "km", "m", "g", "kg", "atm", "ppm", "Sv", "h", "s", "mol", "K", "Pa", "km3", "m3" };
+            { "km", "m", "g", "kg", "atm", "ppm", "Sv", "h", "s", "mol", "K", "Pa", "UA", "km3", "m3" };
 
         private bool IsUnit() =>
             Current?.Type == TokenType.IDENTIFICADOR && _units.Contains(Current.Lexeme);
