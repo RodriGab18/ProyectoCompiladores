@@ -1,26 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dotnet build *)",
-      "Bash(Select-String -Path *)",
-      "Bash(Measure-Object)",
-      "Bash(Select-Object -ExpandProperty Count)",
-      "Skill(pptx)",
-      "Skill(pptx:*)",
-      "Bash(node create_presentation.js)",
+      "Skill(anthropic-skills:docx)",
+      "Skill(anthropic-skills:docx:*)",
+      "Read(//c/Users/Botij/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/188b9f84-8681-48bb-9462-8154fd83b037/39ddb16b-9b00-4c14-9ee0-161c8c7c7cbc/skills/docx/**)",
+      "Bash(node -e \"require\\('docx'\\); console.log\\('docx ok'\\)\")",
+      "Bash(npm list *)",
+      "Bash(node -e \"require\\('docx'\\)\")",
       "Bash(npm install *)",
-      "Bash(node -e \"require\\('pptxgenjs'\\); console.log\\('ok'\\)\")",
-      "Bash(npm root *)",
-      "Bash(node -e \"const m=require\\('module'\\); console.log\\(m.globalPaths\\)\")",
-      "Bash(NODE_PATH=\"C:\\\\Users\\\\Botij\\\\AppData\\\\Roaming\\\\npm\\\\node_modules\" node -e \"const p=require\\('pptxgenjs'\\); console.log\\('ok'\\)\")",
-      "Bash(NODE_PATH=\"C:\\\\Users\\\\Botij\\\\AppData\\\\Roaming\\\\npm\\\\node_modules\" node create_presentation.js)",
-      "Bash(NODE_PATH=\"C:\\\\Users\\\\Botij\\\\AppData\\\\Roaming\\\\npm\\\\node_modules\" python \"C:\\\\Users\\\\Botij\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\188b9f84-8681-48bb-9462-8154fd83b037\\\\39ddb16b-9b00-4c14-9ee0-161c8c7c7cbc\\\\skills\\\\pptx\\\\scripts\\\\office\\\\soffice.py\" --headless --convert-to pdf BioSphereIDE_Presentacion.pptx)",
-      "Bash(where soffice *)",
-      "Bash(where \"soffice.exe\")",
-      "Read(//c/Program Files/LibreOffice/program/**)",
-      "Read(//c/Program Files/**)",
-      "Read(//c/Program Files \\(x86\\)/**)",
-      "Bash(dir \"C:\\\\Users\\\\Botij\\\\OneDrive\\\\Documents\\\\V SEMESTRE\\\\PROYECTO_FINAL_COMPILADORES\\\\ProyectoCompiladores\\\\BioSphereIDE\\\\Resources\")"
+      "Bash(node -e \"const {Document}=require\\('docx'\\);console.log\\('ok'\\)\")",
+      "PowerShell($env:NODE_PATH = \\(npm root -g\\); node -e \"const {Document}=require\\('docx'\\);console.log\\('ok'\\)\")",
+      "Bash(python scripts/office/validate.py \"C:\\\\Users\\\\Botij\\\\OneDrive\\\\Documents\\\\V SEMESTRE\\\\PROYECTO_FINAL_COMPILADORES\\\\ProyectoCompiladores\\\\Informe_Tecnico_BioSphereIDE.docx\")",
+      "Bash(dotnet build *)"
     ]
   }
 }

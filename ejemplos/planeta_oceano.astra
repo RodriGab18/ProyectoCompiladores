@@ -1,0 +1,83 @@
+inicio
+simulacion {
+    // Parámetros para un planeta habitable
+    orbita_y_escala {
+        radius = 6371.0;
+        planet_mass = 6.5;
+        star_distance_au = 1.0;
+        rotation_period_hours = 24.0;
+        planet_temp = -58.0;
+        atm_pressure = 0.2;
+        atm_co2 = 0.0004;
+        atm_methane = 0.000001;
+        atm_o2_n2 = 0.99;
+        planet_water = 0.71;
+        tectonic_activity = 0.4;
+        composition_iron = 0.35;
+        planet_vegetation = 0.8;
+    }
+
+    // Variables globales y de evaluación 
+    ciclos = 0;
+    habitables = 0;
+
+    // Bloque planeta 
+    planeta {
+        masa = 5.97e24 kg;
+        radio = 6371 km;
+    }
+
+    // Bloque atmósfera 
+    atmosfera {
+        presion = 1.0 atm;
+        co2 = 415 ppm;
+    }
+
+    // Bloque agua 
+    agua {
+        estado_liquido = verdadero;
+    }
+
+    // Funciones auxiliares 
+    funcion evaluarHabitabilidad(g, temp, tiene_agua) {
+        si (g > 8 y g < 12) {
+            si (temp > 0 y temp < 40) {
+                si (tiene_agua == verdadero) {
+                    mostrar("El planeta reúne todas las condiciones para albergar vida.");
+                }
+            }
+        } sino {
+            mostrar("El planeta presenta condiciones extremas que dificultan la vida.");
+        }
+    }
+
+    // Bloque vida 
+    vida {
+        temperatura_actual = 15;
+        
+        mientras (ciclos < 5) {
+            ciclos = ciclos + 1;
+            
+            si (temperatura_actual >= 10 y temperatura_actual <= 30) {
+                habitables = habitables + 1;
+                reporte("Clima estable");
+            } sino {
+                reporte("Fluctuación climática severa");
+            }
+            
+            // Incrementamos un poco la temperatura
+            temperatura_actual = temperatura_actual + 2;
+        }
+
+        reporte("Total de ciclos en rango habitable:");
+        reporte(habitables);
+
+
+        evaluarHabitabilidad(9.8, 15, verdadero);
+        
+        indice_biologico = (habitables * 100) / ciclos;
+        mostrar("Índice biológico estimado (%):");
+        mostrar(indice_biologico);
+    }
+}
+fin

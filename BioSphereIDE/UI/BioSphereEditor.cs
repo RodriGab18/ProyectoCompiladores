@@ -75,232 +75,153 @@ namespace BioSphereIDE.UI
             return page;
         }
 
-        internal static string GetInfoGeneral() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
-\b\fs24 ASTRA – Lenguaje para Simulación de Biosferas\b0\fs20\par
+        internal static string GetInfoGeneral() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}{\colortbl ;\red0\green150\blue136;\red80\green80\blue80;}
+\b\fs28\cf1 ASTRA \cf2 - Astrobiology Simulation and Terrain Analysis\b0\fs20\cf0\par
 \par
-\b ¿Qué es ASTRA?\b0\par
-ASTRA (Astronomical Simulation & Terrain Research Algorithm) es un lenguaje de dominio específico (DSL) diseñado para modelar y simular biosferas virtuales. Permite definir planetas, atmósferas, cuerpos de agua y formas de vida, así como establecer reglas de evolución, cálculos y reportes.\par
+\b\fs22 ¿Qué es ASTRA?\b0\fs20\par
+ASTRA es un lenguaje de dominio específico (DSL) robusto y profesional diseñado para modelar biosferas virtuales, calcular gravedad y simular ecosistemas estelares. Permite estructurar de forma declarativa y procedural el comportamiento de un entorno planetario.\par
 \par
-\b Propósito del compilador\b0\par
-El compilador de ASTRA (implementado en C#) realiza cinco fases:\par
-\tab • \b Análisis léxico\b0: reconoce palabras reservadas, identificadores, números, operadores, cadenas, símbolos y detecta errores (caracteres ilegales, números pegados a letras, cadenas sin cerrar).\par
-\tab • \b Análisis sintáctico\b0: construye un árbol sintáctico (AST) según la gramática del lenguaje y valida la estructura (llaves balanceadas, presencia de ''inicio'' y ''fin'', etc.).\par
-\tab • \b Análisis semántico\b0: verifica reglas de tipo, declara variables, comprueba unidades físicas, exige variables obligatorias (masa, radio, presion, co2, estado_liquido), detecta uso de variables no definidas y operaciones inválidas.\par
-\tab • \b Tabla de símbolos\b0: almacena nombre, tipo, valor, unidad, línea y ámbito de cada variable y función.\par
-\tab • \b Generación / ejecución\b0: interpreta el AST y muestra resultados en consola.\par
+\b\fs22 Características del IDE y Compilador\b0\fs20\par
+El compilador realiza un análisis estricto en tres fases:\par
+\tab\cf1 1.\cf0  \b Análisis Léxico\b0: Reconoce estructuras atómicas, detecta caracteres inválidos y cadenas abiertas.\par
+\tab\cf1 2.\cf0  \b Análisis Sintáctico\b0: Construye un Árbol Sintáctico (AST) basado en gramática recursiva descendente.\par
+\tab\cf1 3.\cf0  \b Análisis Semántico\b0: Ejecuta revisión de tipos estrictos, análisis de rangos para escalas físicas, comprobación de parámetros obligatorios y detección de variables no utilizadas.\par
 \par
-\b Ejemplo mínimo funcional\b0\par
-\f1\fs18 inicio\par
-    simulacion {\par
-        planeta {\par
+\b\fs22 Ejemplo Estructural\b0\fs20\par
+\f1\fs19 inicio\par
+    simulacion \{\par
+        planeta \{ masa = 5.97e24 kg; radio = 6371 km; \}\par
+        atmosfera \{ presion = 1 atm; co2 = 400 ppm; \}\par
+        agua \{ estado_liquido = verdadero; \}\par
+    \}\par
+fin\f0\fs20\par
+}";
+
+        internal static string GetSintaxisBasica() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}{\colortbl ;\red0\green150\blue136;\red80\green80\blue80;}
+\b\fs28\cf1 Sintaxis y Gramática\b0\fs20\cf0\par
+\par
+\b\fs22 1. Bloques de Simulación Obligatorios\b0\fs20\par
+Todo entorno debe definirse dentro del bloque principal \f1 simulacion\f0  y contener:\par
+\tab • \b planeta\b0: Requiere las variables \f1 masa\f0  y \f1 radio\f0  (valores numéricos).\par
+\tab • \b atmosfera\b0: Requiere las variables \f1 presion\f0  y \f1 co2\f0  (valores numéricos).\par
+\tab • \b agua\b0: Requiere la variable \f1 estado_liquido\f0  (booleano).\par
+\tab • \b vida\b0: (Opcional) Contiene reglas y bucles.\par
+\tab • \b orbita_y_escala\b0: (Opcional) Ajustes precisos (ej. \f1 planet_mass\f0 , \f1 radius\f0 , \f1 star_distance_au\f0 ) con validación estricta de límites astrofísicos.\par
+\par
+\b\fs22 2. Tipos de Datos\b0\fs20\par
+\tab • \b Números\b0: Enteros, decimales o notación científica (\f1 42\f0 , \f1 3.14\f0 , \f1 5.9e24\f0 ).\par
+\tab • \b Textos\b0: Entre comillas dobles (\f1 ""Mensaje""\f0 ).\par
+\tab • \b Booleanos\b0: \f1 verdadero\f0  y \f1 falso\f0 .\par
+\tab • \b Listas\b0: Arreglos definidos entre corchetes (\f1 [1, 2, 3]\f0 ).\par
+\tab • \b Nulo\b0: Palabra reservada \f1 nulo\f0 .\par
+\par
+\b\fs22 3. Unidades Físicas (Sistema Métrico ASTRA)\b0\fs20\par
+El análisis semántico valida y permite el uso de estas unidades anexas a valores numéricos:\par
+\f1 km, m, g, kg, atm, ppm, Sv, h, s, mol, K, Pa, UA, km3, m3\f0\par
+\par
+\b\fs22 4. Operadores\b0\fs20\par
+\tab • \b Aritméticos\b0: \f1 +\f0 , \f1 -\f0 , \f1 *\f0 , \f1 /\f0 , \f1 ^\f0  (potencia).\par
+\tab • \b Relacionales\b0: \f1 ==\f0 , \f1 !=\f0 , \f1 <\f0 , \f1 >\f0 , \f1 <=\f0 , \f1 >=\f0 .\par
+\tab • \b Lógicos\b0: \f1 y\f0 , \f1 o\f0 .\par
+\par
+\b\fs22 5. Control de Flujo\b0\fs20\par
+\tab • \b Asignación\b0: \f1 var = valor;\f0\par
+\tab • \b Condicionales\b0:\par
+\f1\tab     si (condicion) \{ ... \} sino \{ ... \}\f0\par
+\tab • \b Bucles\b0:\par
+\f1\tab     mientras (condicion) \{ ... \}\f0\par
+\tab     (Con soporte para \f1 romper;\f0  y \f1 continuar;\f0  dentro del ciclo).\par
+\tab • \b Funciones\b0:\par
+\f1\tab     funcion calcular(p1, p2) \{ ... \}\f0\par
+\par
+\b\fs22 6. Entrada / Salida\b0\fs20\par
+\tab • \f1 mostrar(expr);\f0  o \f1 mostrar expr;\f0  : Imprime valores.\par
+\tab • \f1 reporte(expr);\f0  o \f1 reporte expr;\f0  : Genera un reporte estadístico.\par
+}";
+
+        internal static string GetPalabrasReservadas() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}{\colortbl ;\red0\green150\blue136;\red220\green50\blue50;}
+\b\fs28\cf1 Diccionario de Palabras Reservadas\b0\fs20\cf0\par
+\par
+ASTRA reserva identificadores clave para estructurar el lenguaje. \b No pueden utilizarse como nombres de variables ni funciones\b0 .\par
+\par
+\b\fs22 Listado Oficial (Sensible a Mayúsculas)\b0\fs20\par
+\tab • \b Estructurales\b0: \f1 inicio, fin, simulacion\f0\par
+\tab • \b Bloques\b0: \f1 planeta, atmosfera, agua, vida, orbita_y_escala\f0\par
+\tab • \b Tipos y Nulos\b0: \f1 verdadero, falso, nulo\f0\par
+\tab • \b Lógicos\b0: \f1 y, o\f0\par
+\tab • \b Control de Flujo\b0: \f1 si, sino, mientras, iterar, continuar, romper\f0\par
+\tab • \b Interacción\b0: \f1 mostrar, reporte\f0\par
+\tab • \b Subrutinas\b0: \f1 funcion\f0\par
+\par
+\b\cf2 ⚠️ Regla de Sensibilidad\cf0\b0\par
+El analizador es sensible a mayúsculas y minúsculas (Case-Sensitive). Todas las palabras reservadas se escriben estrictamente en \b minúsculas\b0 .\par
+\par
+\b Incorrecto\b0 : \f1 Planeta \{ \}\f0  (Error sintáctico, no reconocido como bloque).\par
+\b Correcto\b0   : \f1 planeta \{ \}\f0\par
+}";
+
+        internal static string GetEjemplos() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}{\colortbl ;\red0\green150\blue136;\red80\green80\blue80;}
+\b\fs28\cf1 Casos de Uso y Ejemplos\b0\fs20\cf0\par
+\par
+\b\fs22 1. Simulación Básica Validada\b0\fs20\par
+\f1\fs19 inicio\par
+    simulacion \{\par
+        planeta \{\par
             masa = 5.97e24 kg;\par
             radio = 6371 km;\par
-        }\par
-        atmosfera {\par
-            presion = 1 atm;\par
-            co2 = 400 ppm;\par
-        }\par
-        agua {\par
+        \}\par
+        atmosfera \{\par
+            presion = 1.01 atm;\par
+            co2 = 415 ppm;\par
+        \}\par
+        agua \{\par
             estado_liquido = verdadero;\par
-        }\par
-        vida {\par
-            // reglas de vida aquí\par
-        }\par
-    }\par
+        \}\par
+        vida \{\par
+            mostrar(""Análisis biológico iniciado."");\par
+        \}\par
+    \}\par
 fin\f0\fs20\par
 \par
-Con ASTRA puedes simular desde un ecosistema simple hasta biosferas complejas con funciones definidas por el usuario, condicionales y bucles.\par
-}";
-
-        internal static string GetSintaxisBasica() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
-\b\fs24 Sintaxis Básica de ASTRA\b0\fs20\par
-\par
-\b 1. Estructura general\b0\par
-\f1 inicio\par
-    simulacion {\par
-        // Bloques obligatorios\par
-        planeta { ... }\par
-        atmosfera { ... }\par
-        agua { ... }\par
-        vida { ... }\par
-        // También pueden haber funciones y sentencias globales\par
-    }\par
-fin\f0\par
-\par
-\b 2. Bloques obligatorios y variables requeridas\b0\par
-\f1\tab • planeta\f0: \f1 masa\f0 (numérico, unidad ej. kg) y \f1 radio\f0 (numérico, km).\par
-\f1\tab • atmosfera\f0: \f1 presion\f0 (numérico, atm) y \f1 co2\f0 (numérico, ppm).\par
-\f1\tab • agua\f0: \f1 estado_liquido\f0 (booleano: verdadero/falso).\par
-\f1\tab • vida\f0: sin variables obligatorias.\par
-\par
-\b 3. Tipos de datos\b0\par
-\tab • \b Números\b0: enteros o decimales (42, 3.1416, 5.97e24).\par
-\tab • \b Textos\b0: entre comillas dobles (""Hola mundo"").\par
-\tab • \b Booleanos\b0: \f1 verdadero\f0, \f1 falso\f0.\par
-\tab • \b Listas\b0: [1, 2, 3], [""a"", ""b""].\par
-\tab • \b Nulo\b0: \f1 nulo\f0.\par
-\par
-\b 4. Operadores\b0\par
-\tab • Aritméticos: \f1 +   -   *   /   ^\f0 (potencia).\par
-\tab • Comparación: \f1 ==   !=   <   >   <=   >=\f0.\par
-\tab • Lógicos: \f1 y   o\f0.\par
-\par
-\b 5. Unidades físicas (opcionales)\b0\par
-Se pueden añadir a números: \f1 km, m, g, kg, atm, ppm, Sv, %, °C, h, s\f0.\par
-Ejemplo: \f1 temperatura = 25 °C;\f0\par
-\par
-\b 6. Sentencias de control\b0\par
-\tab • \b Asignación\b0: \f1 identificador = valor;\f0\par
-\tab • \b Condicional\b0:\par
-\f1\tab     si (condicion) {\par
-\tab         ...\par
-\tab     } sino {\par
-\tab         ...\par
-\tab     }\f0\par
-\tab • \b Bucle mientras\b0:\par
-\f1\tab     mientras (condicion) {\par
-\tab         ...\par
-\tab     }\f0\par
-\tab • \b Mostrar\b0 (salida): \f1 mostrar(expresion);\f0 o \f1 mostrar expresion;\f0\par
-\tab • \b Reporte\b0 (estadística): \f1 reporte(expresion);\f0\par
-\tab • \b Definición de función\b0:\par
-\f1\tab     funcion nombre(param1, param2) {\par
-\tab         ...\par
-\tab     }\f0\par
-\tab • \b Llamada a función\b0: \f1 nombre(argumento1, argumento2);\f0\par
-\par
-\b 7. Comentarios\b0\par
-\f1 // comentario de línea\par
-/* comentario\par
-   de bloque */\f0\par
-}";
-
-        internal static string GetPalabrasReservadas() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
-\b\fs24 Palabras Reservadas de ASTRA\b0\fs20\par
-\par
-Estas palabras tienen un significado especial y \b no pueden usarse como identificadores\b0 (variables o funciones).\par
-\par
-\b Lista completa (según el analizador léxico)\b0\par
-\f1\fs18
-\b • Estructura de programa:\b0   inicio, fin, simulacion\par
-\b • Bloques temáticos:\b0        planeta, atmosfera, agua, vida\par
-\b • Control de flujo:\b0         si, sino, mientras, iterar, continuar, romper\par
-\b • Salida:\b0                    mostrar, reporte\par
-\b • Valores lógicos y nulo:\b0   verdadero, falso, nulo\par
-\b • Operadores lógicos:\b0       y, o\par
-\b • Funciones:\b0                 funcion\f0\fs20\par
-\par
-\b ⚠️ Notas importantes\b0\par
-\tab • Todas las palabras reservadas deben escribirse en \b minúsculas\b0. Ejemplo: \f1 simulacion\f0 (válido), \f1 Simulacion\f0 (no reconocido).\par
-\tab • No se pueden usar como identificadores:\par
-\f1\tab     planeta = 5;\f0   \b ❌\b0\par
-\f1\tab     miPlaneta = 5;\f0 \b ✅\b0\par
-\par
-\b Ejemplo de uso correcto\b0\par
-\f1\fs18 inicio\par
-    simulacion {\par
-        planeta { masa = 1000 kg; }\par
-    }\par
-fin\f0\fs20\par
-\par
-\b Ejemplo de error léxico por mayúsculas\b0\par
-\f1\fs18 Inicio\par
-    Simulacion {\par
-        Planeta { masa = 1000 kg; }  /* Error: 'Planeta' no es palabra reservada */\par
-    }\par
-Fin\f0\fs20\par
-\par
-El analizador léxico trataría \f1 Inicio\f0, \f1 Simulacion\f0, \f1 Planeta\f0 y \f1 Fin\f0 como identificadores normales, lo que provocaría errores sintácticos porque se esperaban las palabras reservadas en minúsculas.\par
-}";
-
-        internal static string GetEjemplos() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
-\b\fs24 Ejemplos Completos en ASTRA\b0\fs20\par
-\par
-\b Ejemplo 1: Simulación básica con condicional\b0\par
-\f1\fs18 inicio\par
-    simulacion {\par
-        planeta {\par
-            masa = 1000 kg;\par
-            radio = 100 km;\par
-        }\par
-        atmosfera {\par
-            presion = 0.5 atm;\par
-            co2 = 800 ppm;\par
-        }\par
-        agua {\par
-            estado_liquido = falso;\par
-        }\par
-        vida {\par
-            temperatura = 30;\par
-            si (temperatura > 25) {\par
-                mostrar(""Alerta: temperatura alta"");\par
-            }\par
-            reporte(""Condiciones extremas"");\par
-        }\par
-    }\par
-fin\f0\fs20\par
-\par
-\b Ejemplo 2: Uso de bucle y función definida por usuario\b0\par
-\f1\fs18 inicio\par
-    simulacion {\par
-        planeta { masa = 1.0 kg; radio = 1.0 km; }\par
-        atmosfera { presion = 1.0 atm; co2 = 300 ppm; }\par
-        agua { estado_liquido = verdadero; }\par
-        vida {\par
-            funcion cuadrado(x) {\par
-                retorno = x * x;\par
-            }\par
+\b\fs22 2. Lógica Algorítmica con Funciones\b0\fs20\par
+\f1\fs19 inicio\par
+    simulacion \{\par
+        planeta \{ masa = 1 kg; radio = 1 km; \}\par
+        atmosfera \{ presion = 1 atm; co2 = 1 ppm; \}\par
+        agua \{ estado_liquido = falso; \}\par
+        vida \{\par
+            funcion calcular_energia(m, c) \{\par
+                energia = m * (c ^ 2);\par
+                mostrar(energia);\par
+            \}\par
+            \par
             contador = 0;\par
-            mientras (contador < 5) {\par
-                mostrar(cuadrado(contador));\par
+            mientras (contador < 3) \{\par
+                calcular_energia(10, 300000);\par
                 contador = contador + 1;\par
-            }\par
-        }\par
-    }\par
+            \}\par
+        \}\par
+    \}\par
 fin\f0\fs20\par
 \par
-\b Ejemplo 3: Listas y operaciones con unidades\b0\par
-\f1\fs18 inicio\par
-    simulacion {\par
-        planeta { masa = 5.97e24 kg; radio = 6371 km; }\par
-        atmosfera { presion = 1.0 atm; co2 = 400 ppm; }\par
-        agua { estado_liquido = verdadero; }\par
-        vida {\par
-            temperaturas = [15, 20, 25] °C;\par
-            promedio = (temperaturas[0] + temperaturas[1] + temperaturas[2]) / 3;\par
-            mostrar(""Promedio: "", promedio, ""°C"");\par
-            si (promedio > 20) {\par
-                reporte(""Clima cálido"");\par
-            }\par
-        }\par
-    }\par
+\b\fs22 3. Escala y Órbita (Validación Avanzada)\b0\fs20\par
+\f1\fs19 inicio\par
+    simulacion \{\par
+        planeta \{ masa = 1 kg; radio = 1 km; \}\par
+        atmosfera \{ presion = 1 atm; co2 = 1 ppm; \}\par
+        agua \{ estado_liquido = falso; \}\par
+        orbita_y_escala \{\par
+            // El analizador valida los límites físicos automáticamente.\par
+            star_distance_au = 1.0 UA;\par
+            planet_mass = 1.0;\par
+            radius = 6371.0;\par
+            rotation_period_hours = 24.0 h;\par
+            \par
+            // Si el radio excede el rango, \par
+            // el analizador arrojará el error SEM-100.\par
+        \}\par
+    \}\par
 fin\f0\fs20\par
-\par
-\b Ejemplo 4: Errores semánticos (para probar el analizador)\b0\par
-\f1\fs18 inicio\par
-    simulacion {\par
-        planeta {\par
-            masa = 10 kg;\par
-            // Falta 'radio' → error SEM-041\par
-        }\par
-        atmosfera {\par
-            presion = 1 atm;\par
-            // Falta 'co2' → error SEM-041\par
-        }\par
-        agua {\par
-            estado_liquido = 42;   // error: debe ser booleano\par
-        }\par
-        vida {\par
-            x = y + 2;   // error: 'y' no declarada (SEM-001)\par
-        }\par
-    }\par
-fin\f0\fs20\par
-\par
-\b ¿Cómo probarlos?\b0\par
-1. Copia cualquiera de los ejemplos en el editor.\par
-2. Haz clic en \b Compilar\b0.\par
-3. Revisa la ventana de \b tokens\b0, \b consola de salida\b0 y los errores (si los hay).\par
-4. Si todo es correcto, se mostrará el árbol sintáctico y la tabla de símbolos.\par
 }";
 
         private string GetIntegracionGodot() => @"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Segoe UI;}{\f1\fnil\fcharset0 Consolas;}}
@@ -479,7 +400,27 @@ Para inyectar esto en el compilador, añade un bloque \f1 orbita_y_escala \{ ...
             btnSimular.FlatAppearance.MouseOverBackColor  = Color.FromArgb(60, 46, 230, 255);
             btnSimular.FlatAppearance.MouseDownBackColor  = Color.FromArgb(120, 46, 230, 255);
 
-            chkModoPrueba = new CheckBox { Text = "  Modo Prueba", ForeColor = ColPistachio, Font = new Font("Segoe UI", 10), Location = new Point(354, 20), AutoSize = true, Checked = false };
+            // Botón Generar Informe — creación explícita con texto ASCII para garantizar visibilidad
+            var btnInforme = new Button
+            {
+                Text      = "INF",
+                Font      = new Font("Consolas", 10, FontStyle.Bold),
+                Location  = new Point(296, 10),
+                Size      = new Size(44, 44),
+                BackColor = Color.Transparent,
+                ForeColor = ColCaribbean,
+                FlatStyle = FlatStyle.Flat,
+                Cursor    = Cursors.Hand,
+                TabStop   = false
+            };
+            btnInforme.FlatAppearance.BorderSize         = 1;
+            btnInforme.FlatAppearance.BorderColor        = Color.FromArgb(80, 46, 230, 255);
+            btnInforme.FlatAppearance.MouseOverBackColor = Color.FromArgb(40, 46, 230, 255);
+            btnInforme.FlatAppearance.MouseDownBackColor = Color.FromArgb(80, 46, 230, 255);
+            new ToolTip().SetToolTip(btnInforme, "Generar informe astrobiológico");
+            topPanel.Controls.Add(btnInforme);
+
+            chkModoPrueba = new CheckBox { Text = "  Modo Prueba", ForeColor = ColPistachio, Font = new Font("Segoe UI", 10), Location = new Point(360, 20), AutoSize = true, Checked = false };
             chkModoPrueba.CheckedChanged += ChkModoPrueba_CheckedChanged;
 
             topPanel.Controls.Add(lblTitle); topPanel.Controls.Add(sep); topPanel.Controls.Add(chkModoPrueba);
@@ -487,6 +428,7 @@ Para inyectar esto en el compilador, añade un bloque \f1 orbita_y_escala \{ ...
 
             btnArboles.Click       += BtnArboles_Click;
             btnSimular.Click       += BtnSimular_ClickAsync;
+            btnInforme.Click       += BtnInforme_Click;
 
             // ════════ STATUSBAR ════════
             statusPanel = new Panel { Dock = DockStyle.Bottom, Height = 28, BackColor = ColPine };
@@ -1124,6 +1066,55 @@ Para inyectar esto en el compilador, añade un bloque \f1 orbita_y_escala \{ ...
             }
         }
 
+        // ── Botón 📊 Generar Informe ─────────────────────────────────────────
+        private void BtnInforme_Click(object? sender, EventArgs e)
+        {
+            if (ultimoAST == null)
+            {
+                MessageBox.Show(
+                    "No hay un AST válido para analizar.\nEscribe código ASTRA sin errores primero.",
+                    "Sin compilación",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            // Ejecutar el intérprete para recopilar salidas de mostrar() y reporte()
+            var interp    = new ASTInterpreter();
+            var resultado = interp.Execute(ultimoAST);
+
+            // Extraer parámetros físicos del bloque orbita_y_escala
+            var parametros = ExtraerParametros();
+
+            // Generar el informe
+            bool sinErrores = currentErrors == null || currentErrors.Count == 0;
+            var  generador  = new BioSphereIDE.Analizadores.ReportGenerator();
+            string informe  = generador.GenerarInforme(parametros, resultado, sinErrores);
+
+            // Mostrar en consola
+            txtConsola.AppendText("\n");
+            txtConsola.SelectionColor = ColCaribbean;
+            foreach (string linea in informe.Split('\n'))
+            {
+                bool esSeparador  = linea.StartsWith("===") || linea.StartsWith("---");
+                bool esStatus     = linea.StartsWith("STATUS:");
+                bool esMetrica    = linea.StartsWith("*");
+                bool esBiofirma   = linea.TrimStart().StartsWith("✓");
+
+                txtConsola.SelectionColor = esSeparador  ? ColMeadow
+                                          : esStatus     ? ColCaribbean
+                                          : esMetrica    ? ColAntiFlash
+                                          : esBiofirma   ? ColPistachio
+                                          : ColStone;
+                txtConsola.AppendText(linea + "\n");
+            }
+            txtConsola.AppendText("\n");
+
+            // Mostrar también en ventana emergente
+            using var frm = new FrmInformeAstro(informe);
+            frm.ShowDialog(this);
+        }
+
         private void ActualizarContadorErrores()
         {
             if (currentErrors != null)
@@ -1297,9 +1288,7 @@ Para inyectar esto en el compilador, añade un bloque \f1 orbita_y_escala \{ ...
             txtCodigo.Text =
 @"inicio
 simulacion {
-
-    // ── Bloque de integración con Godot ────────────────
-    // Parámetros para un planeta tipo Tierra habitable
+    // Parámetros para un planeta habitable
     orbita_y_escala {
         radius = 6371.0;
         planet_mass = 1.0;
@@ -1316,28 +1305,28 @@ simulacion {
         planet_vegetation = 0.8;
     }
 
-    // ── Variables globales y de evaluación ─────────────
+    // Variables globales y de evaluación 
     ciclos = 0;
     habitables = 0;
 
-    // ── Bloque planeta ────────────────────────────────
+    // Bloque planeta 
     planeta {
         masa = 5.97e24 kg;
         radio = 6371 km;
     }
 
-    // ── Bloque atmósfera ──────────────────────────────
+    // Bloque atmósfera 
     atmosfera {
         presion = 1.0 atm;
         co2 = 415 ppm;
     }
 
-    // ── Bloque agua ───────────────────────────────────
+    // Bloque agua 
     agua {
         estado_liquido = verdadero;
     }
 
-    // ── Funciones auxiliares ──────────────────────────
+    // Funciones auxiliares 
     funcion evaluarHabitabilidad(g, temp, tiene_agua) {
         si (g > 8 y g < 12) {
             si (temp > 0 y temp < 40) {
@@ -1350,7 +1339,7 @@ simulacion {
         }
     }
 
-    // ── Bloque vida ───────────────────────────────────
+    // Bloque vida 
     vida {
         temperatura_actual = 15;
         
@@ -1372,10 +1361,8 @@ simulacion {
         reporte(habitables);
 
 
-        // Llamamos a la función auxiliar simulando una gravedad terrestre 9.8m/s2
         evaluarHabitabilidad(9.8, 15, verdadero);
         
-        // Operación con variables
         indice_biologico = (habitables * 100) / ciclos;
         mostrar(""Índice biológico estimado (%):"");
         mostrar(indice_biologico);
@@ -1697,6 +1684,126 @@ fin";
 
             Recorrer(programa);
             return subArboles;
+        }
+    }
+
+    // ==================================================================================
+    // VENTANA DE INFORME ASTROBIOLÓGICO
+    // ==================================================================================
+    internal sealed class FrmInformeAstro : Form
+    {
+        // Paleta compartida
+        private static readonly Color BgDark    = Color.FromArgb(9,  6,  22);
+        private static readonly Color BgPanel   = Color.FromArgb(19, 14, 38);
+        private static readonly Color Accent    = Color.FromArgb(46, 230, 255);
+        private static readonly Color TextMain  = Color.FromArgb(240, 244, 255);
+        private static readonly Color TextDim   = Color.FromArgb(162, 169, 196);
+        private static readonly Color Gold      = Color.FromArgb(255, 200, 80);
+        private static readonly Color Green     = Color.FromArgb(80,  220, 140);
+        private static readonly Color Red       = Color.FromArgb(255, 100, 80);
+
+        public FrmInformeAstro(string contenido)
+        {
+            Text            = "Informe Astrobiológico — ASTRA";
+            Size            = new Size(660, 600);
+            MinimumSize     = new Size(500, 400);
+            StartPosition   = FormStartPosition.CenterParent;
+            BackColor       = BgDark;
+            ForeColor       = TextMain;
+            ShowIcon        = false;
+            Font            = new Font("Segoe UI", 10);
+
+            // ── Header ────────────────────────────────────────────────────────
+            var header = new Panel { Dock = DockStyle.Top, Height = 50, BackColor = BgPanel };
+            var lblTitulo = new Label
+            {
+                Text      = "  ◈  INFORME DE SIMULACIÓN ASTRA",
+                ForeColor = Accent,
+                Font      = new Font("Consolas", 12, FontStyle.Bold),
+                Dock      = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            header.Controls.Add(lblTitulo);
+
+            // ── Contenido del informe ─────────────────────────────────────────
+            var rtb = new RichTextBox
+            {
+                Dock        = DockStyle.Fill,
+                Font        = new Font("Consolas", 10),
+                BackColor   = BgPanel,
+                ForeColor   = TextMain,
+                ReadOnly    = true,
+                BorderStyle = BorderStyle.None,
+                Padding     = new Padding(16),
+                ScrollBars  = RichTextBoxScrollBars.Vertical
+            };
+
+            // Colorear líneas según su contenido
+            foreach (string linea in contenido.Split('\n'))
+            {
+                Color color = DeterminarColor(linea);
+                rtb.SelectionColor = color;
+                rtb.AppendText(linea + "\n");
+            }
+
+            // ── Botones ───────────────────────────────────────────────────────
+            var footPanel = new Panel { Dock = DockStyle.Bottom, Height = 52, BackColor = BgPanel };
+
+            Button CrearBtn(string texto, Color bg, int x)
+            {
+                var btn = new Button
+                {
+                    Text      = texto,
+                    Location  = new Point(x, 10),
+                    Size      = new Size(130, 34),
+                    BackColor = bg,
+                    ForeColor = BgDark,
+                    FlatStyle = FlatStyle.Flat,
+                    Font      = new Font("Segoe UI", 9, FontStyle.Bold),
+                    Cursor    = Cursors.Hand
+                };
+                btn.FlatAppearance.BorderSize = 0;
+                return btn;
+            }
+
+            var btnCopiar = CrearBtn("Copiar al portapapeles", Accent, 12);
+            btnCopiar.Click += (s, e) =>
+            {
+                Clipboard.SetText(contenido);
+                btnCopiar.Text = "¡Copiado!";
+                var timer = new System.Windows.Forms.Timer { Interval = 1500 };
+                timer.Tick += (_, __) => { btnCopiar.Text = "Copiar al portapapeles"; timer.Stop(); timer.Dispose(); };
+                timer.Start();
+            };
+
+            var btnCerrar = CrearBtn("Cerrar", Color.FromArgb(60, 55, 90), 156);
+            btnCerrar.ForeColor = TextMain;
+            btnCerrar.Click += (s, e) => Close();
+
+            footPanel.Controls.Add(btnCopiar);
+            footPanel.Controls.Add(btnCerrar);
+
+            // ── Ensamblar ─────────────────────────────────────────────────────
+            var contentPad = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12, 4, 12, 4), BackColor = BgDark };
+            contentPad.Controls.Add(rtb);
+
+            Controls.Add(contentPad);
+            Controls.Add(footPanel);
+            Controls.Add(header);
+        }
+
+        private static Color DeterminarColor(string linea)
+        {
+            if (linea.StartsWith("==="))                        return Color.FromArgb(255, 140, 46); // naranja
+            if (linea.StartsWith("---"))                        return Color.FromArgb(50, 50, 80);
+            if (linea.StartsWith("STATUS:") && linea.Contains("EXITOSA")) return Green;
+            if (linea.StartsWith("STATUS:"))                    return Red;
+            if (linea.StartsWith("*"))                          return TextMain;
+            if (linea.TrimStart().StartsWith("✓"))              return Green;
+            if (linea.Contains("[Salidas") || linea.Contains("[Biofirmas")) return Gold;
+            if (linea.TrimStart().StartsWith("mostrar") || linea.TrimStart().StartsWith("reporte")) return Color.FromArgb(180, 220, 255);
+            if (linea.TrimStart().StartsWith("  ") && linea.Contains(":")) return TextDim;
+            return TextDim;
         }
     }
 }
